@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Emby Badges</title>
+</head>
+<body>
+<div id="EmbyBadgesConfigPage" data-role="page" class="page type-interior pluginConfigurationPage"
+     data-require="emby-input,emby-button,emby-select,emby-checkbox">
+    <div data-role="content">
+        <div class="content-primary">
+
+            <form id="EmbyBadgesConfigForm">
+
+                <div class="sectionTitleContainer flex align-items-center">
+                    <h2 class="sectionTitle">Emby Badges — Configuration</h2>
+                </div>
+
+                <!-- Activation globale -->
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="chkEnableBadges" type="checkbox" is="emby-checkbox" />
+                        <span>Activer les badges</span>
+                    </label>
+                </div>
+
+                <br />
+
+                <!-- Résolution -->
+                <h3>Badges de résolution</h3>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShowResolutionBadge" type="checkbox" is="emby-checkbox" />
+                        <span>Afficher le badge de résolution</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShowSd" type="checkbox" is="emby-checkbox" />
+                        <span>SD</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShowHd" type="checkbox" is="emby-checkbox" />
+                        <span>HD (720p)</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShowFullHd" type="checkbox" is="emby-checkbox" />
+                        <span>Full HD (1080p)</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShow4K" type="checkbox" is="emby-checkbox" />
+                        <span>4K (2160p)</span>
+                    </label>
+                </div>
+
+                <br />
+
+                <!-- Langues -->
+                <h3>Badges de langue</h3>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShowLanguageBadge" type="checkbox" is="emby-checkbox" />
+                        <span>Afficher les badges de langue</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShowFrench" type="checkbox" is="emby-checkbox" />
+                        <span>Français (FR)</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShowEnglish" type="checkbox" is="emby-checkbox" />
+                        <span>Anglais (EN)</span>
+                    </label>
+                </div>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShowOriginalVersion" type="checkbox" is="emby-checkbox" />
+                        <span>Version originale (VO)</span>
+                    </label>
+                </div>
+
+                <br />
+
+                <!-- Versions multiples -->
+                <h3>Versions multiples</h3>
+                <div class="checkboxContainer">
+                    <label class="emby-checkbox-label">
+                        <input id="chkShowMultiVersionBadge" type="checkbox" is="emby-checkbox" />
+                        <span>Afficher le badge "MULTI" si plusieurs versions disponibles</span>
+                    </label>
+                </div>
+
+                <br />
+
+                <!-- Apparence -->
+                <h3>Apparence</h3>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="selPosition">Position des badges</label>
+                    <select id="selPosition" is="emby-select">
+                        <option value="BottomLeft">Bas gauche</option>
+                        <option value="BottomRight">Bas droite</option>
+                        <option value="TopLeft">Haut gauche</option>
+                        <option value="TopRight">Haut droite</option>
+                    </select>
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="txtBadgeSize">Taille des badges (px)</label>
+                    <input id="txtBadgeSize" type="number" is="emby-input" min="20" max="100" step="2" />
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="txtBadgeMargin">Marge (px)</label>
+                    <input id="txtBadgeMargin" type="number" is="emby-input" min="0" max="50" step="1" />
+                </div>
+
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="txtBadgeOpacity">Opacité (0–100)</label>
+                    <input id="txtBadgeOpacity" type="number" is="emby-input" min="0" max="100" step="5" />
+                </div>
+
+                <br />
+
+                <div>
+                    <button is="emby-button" type="submit" class="raised button-submit block">
+                        <span>Enregistrer</span>
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        var EmbyBadgesConfig = {
+            pluginUniqueId: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+
+            load: function (page) {
+                ApiClient.getPluginConfiguration(EmbyBadgesConfig.pluginUniqueId).then(function (config) {
+                    page.querySelector('#chkEnableBadges').checked           = config.EnableBadges;
+                    page.querySelector('#chkShowResolutionBadge').checked    = config.ShowResolutionBadge;
+                    page.querySelector('#chkShowSd').checked                 = config.ShowSd;
+                    page.querySelector('#chkShowHd').checked                 = config.ShowHd;
+                    page.querySelector('#chkShowFullHd').checked             = config.ShowFullHd;
+                    page.querySelector('#chkShow4K').checked                 = config.Show4K;
+                    page.querySelector('#chkShowLanguageBadge').checked      = config.ShowLanguageBadge;
+                    page.querySelector('#chkShowFrench').checked             = config.ShowFrench;
+                    page.querySelector('#chkShowEnglish').checked            = config.ShowEnglish;
+                    page.querySelector('#chkShowOriginalVersion').checked    = config.ShowOriginalVersion;
+                    page.querySelector('#chkShowMultiVersionBadge').checked  = config.ShowMultiVersionBadge;
+                    page.querySelector('#selPosition').value                 = config.Position;
+                    page.querySelector('#txtBadgeSize').value                = config.BadgeSize;
+                    page.querySelector('#txtBadgeMargin').value              = config.BadgeMargin;
+                    page.querySelector('#txtBadgeOpacity').value             = Math.round(config.BadgeOpacity * 100);
+                    Dashboard.hideLoadingMsg();
+                });
+            },
+
+            save: function (page) {
+                ApiClient.getPluginConfiguration(EmbyBadgesConfig.pluginUniqueId).then(function (config) {
+                    config.EnableBadges          = page.querySelector('#chkEnableBadges').checked;
+                    config.ShowResolutionBadge   = page.querySelector('#chkShowResolutionBadge').checked;
+                    config.ShowSd                = page.querySelector('#chkShowSd').checked;
+                    config.ShowHd                = page.querySelector('#chkShowHd').checked;
+                    config.ShowFullHd            = page.querySelector('#chkShowFullHd').checked;
+                    config.Show4K                = page.querySelector('#chkShow4K').checked;
+                    config.ShowLanguageBadge     = page.querySelector('#chkShowLanguageBadge').checked;
+                    config.ShowFrench            = page.querySelector('#chkShowFrench').checked;
+                    config.ShowEnglish           = page.querySelector('#chkShowEnglish').checked;
+                    config.ShowOriginalVersion   = page.querySelector('#chkShowOriginalVersion').checked;
+                    config.ShowMultiVersionBadge = page.querySelector('#chkShowMultiVersionBadge').checked;
+                    config.Position              = page.querySelector('#selPosition').value;
+                    config.BadgeSize             = parseInt(page.querySelector('#txtBadgeSize').value, 10);
+                    config.BadgeMargin           = parseInt(page.querySelector('#txtBadgeMargin').value, 10);
+                    config.BadgeOpacity          = parseInt(page.querySelector('#txtBadgeOpacity').value, 10) / 100;
+
+                    ApiClient.updatePluginConfiguration(EmbyBadgesConfig.pluginUniqueId, config).then(function () {
+                        Dashboard.processPluginConfigurationUpdateResult();
+                    });
+                });
+            }
+        };
+
+        window.EmbyBadgesConfigPage = {
+            onPageShow: function () { EmbyBadgesConfig.load(this); },
+            onSubmit: function (e) {
+                e.preventDefault();
+                EmbyBadgesConfig.save(document.querySelector('#EmbyBadgesConfigPage'));
+                return false;
+            }
+        };
+
+        document.querySelector('#EmbyBadgesConfigForm').addEventListener('submit', window.EmbyBadgesConfigPage.onSubmit);
+    </script>
+</div>
+</body>
+</html>

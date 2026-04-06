@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <AssemblyName>EmbyBadges</AssemblyName>
+    <RootNamespace>EmbyBadges</RootNamespace>
+    <Version>1.0.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <!-- SDK Emby — référencés depuis libs/, présents au runtime, ne pas bundler -->
+  <ItemGroup>
+    <Reference Include="MediaBrowser.Common">
+      <HintPath>..\..\libs\MediaBrowser.Common.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MediaBrowser.Controller">
+      <HintPath>..\..\libs\MediaBrowser.Controller.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="MediaBrowser.Model">
+      <HintPath>..\..\libs\MediaBrowser.Model.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- SkiaSharp — doit être bundlé avec le plugin -->
+  <ItemGroup>
+    <PackageReference Include="SkiaSharp" Version="2.88.6" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.6" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
+  </ItemGroup>
+
+  <!-- Ressources embarquées -->
+  <ItemGroup>
+    <EmbeddedResource Include="Configuration\configPage.html" />
+  </ItemGroup>
+
+</Project>
