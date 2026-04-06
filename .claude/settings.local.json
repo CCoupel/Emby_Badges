@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:dev.emby.media)",
+      "WebFetch(domain:emby.media)",
+      "Bash(dotnet --version)",
+      "Bash(\"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe\" --version)",
+      "Bash(DOTNET=\"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe\" && \"$DOTNET\" build \"/c/Users/cyril/Documents/VScode/GITHUB/Emby_Badges/src/EmbyBadges/\" --configuration Release --output \"/c/Users/cyril/Documents/VScode/GITHUB/Emby_Badges/dist/\" 2>&1)",
+      "Bash(grep -ao \"MediaBrowser[^|<>]*EnhancedImageInfo\" \"/c/Users/cyril/Documents/VScode/GITHUB/Emby_Badges/libs/MediaBrowser.Controller.dll\" | sort -u | head -10\ngrep -ao \"MediaBrowser[^|<>]*EnhancedImageInfo\" \"/c/Users/cyril/Documents/VScode/GITHUB/Emby_Badges/libs/MediaBrowser.Model.dll\" | sort -u | head -10)",
+      "Bash(cat \"/c/Users/cyril/Documents/VScode/GITHUB/Emby_Virtuallib/.claude/settings.local.json\" 2>/dev/null | python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(p\\) for p in d['permissions']['allow'] if 'dotnet' in p.lower\\(\\) or 'kubectl' in p.lower\\(\\) or 'deploy' in p.lower\\(\\) or 'copy' in p.lower\\(\\) or 'plugin' in p.lower\\(\\)]\" 2>/dev/null || true)",
+      "Skill(commit-commands:commit-push-pr)"
+    ]
+  }
+}
