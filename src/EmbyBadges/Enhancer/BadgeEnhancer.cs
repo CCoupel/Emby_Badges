@@ -62,14 +62,14 @@ public class BadgeEnhancer : IImageEnhancer
 
         var mediaInfo = BadgeDataExtractor.GetMediaInfo(item);
 
+        static string BC(BadgeConfig b) =>
+            $"{b.Enabled}{b.Position}{b.SizePercent}{b.MarginPercent}{b.Opacity}";
+
         return string.Join("_",
             nameof(EmbyBadges),
-            config.Position,
-            config.BadgeSizePercent,
-            config.BadgeOpacity,
-            config.ShowResolutionBadge,
-            config.ShowLanguageBadge,
-            config.ShowMultiVersionBadge,
+            BC(config.Sd), BC(config.Hd), BC(config.FullHd), BC(config.Uhd4K),
+            BC(config.French), BC(config.English), BC(config.Vo),
+            BC(config.MultiVersion),
             mediaInfo.ResolutionIcon,
             string.Join(",", mediaInfo.AudioLanguages),
             mediaInfo.HasMultipleVersions
