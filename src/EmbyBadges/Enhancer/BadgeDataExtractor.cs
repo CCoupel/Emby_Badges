@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
-using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Model.Entities;
 
 namespace EmbyBadges.Enhancer;
@@ -19,58 +18,80 @@ public static class BadgeDataExtractor
 
         var videoStream = streams.FirstOrDefault(s => s.Type == MediaStreamType.Video);
         var audioStreams = streams.Where(s => s.Type == MediaStreamType.Audio).ToList();
-        var subtitleStreams = streams.Where(s => s.Type == MediaStreamType.Subtitle).ToList();
 
         return new MediaInfo
         {
-            Resolution = DetectResolution(videoStream),
-            Languages = DetectLanguages(audioStreams, subtitleStreams),
+            ResolutionIcon = DetectResolutionIcon(videoStream),
+            AudioLanguages = DetectLanguages(audioStreams),
             HasMultipleVersions = item is Video video && video.GetAlternateVersionIds().Any()
         };
     }
 
-    private static Resolution DetectResolution(MediaStream? videoStream)
+    /// <summary>
+    /// Détecte la résolution via DisplayTitle du stream vidéo (même approche qu'EmbyIcons).
+    /// Retourne le nom de l'icône embarquée (ex: "res_1080p") ou null.
+    /// </summary>
+    private static string? DetectResolutionIcon(MediaStream? videoStream)
     {
-        if (videoStream is null) return Resolution.Unknown;
+        if (videoStream is null) return null;
 
+        // Priorité 1 : DisplayTitle (ex: "1080p", "4K", "720p")
+        var title = (videoStream.DisplayTitle ?? "").ToLowerInvariant();
+
+        if (title.Contains("4k") || title.Contains("2160"))  return "res_4k";
+        if (title.Contains("1080"))                           return "res_1080p";
+        if (title.Contains("720"))                            return "res_720p";
+        if (title.Contains("480") || title.Contains("576"))   return "res_480p";
+
+        // Fallback : pixels bruts
         var height = videoStream.Height ?? 0;
-
         return height switch
         {
-            >= 2160 => Resolution.UHD4K,
-            >= 1080 => Resolution.FullHD,
-            >= 720  => Resolution.HD,
-            > 0     => Resolution.SD,
-            _       => Resolution.Unknown
+            >= 2160 => "res_4k",
+            >= 1080 => "res_1080p",
+            >= 720  => "res_720p",
+            > 0     => "res_480p",
+            _       => null
         };
     }
 
-    private static List<string> DetectLanguages(List<MediaStream> audioStreams, List<MediaStream> subtitleStreams)
+    /// <summary>
+    /// Détecte les langues audio via DisplayLanguage (ex: "French", "English").
+    /// Retourne la liste des noms d'icônes embarquées (ex: "lang_french").
+    /// </summary>
+    private static List<string> DetectLanguages(List<MediaStream> audioStreams)
     {
-        var languages = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+        var seen = new HashSet<string>();
+        var icons = new List<string>();
 
-        foreach (var stream in audioStreams.Concat(subtitleStreams))
+        foreach (var stream in audioStreams)
         {
-            if (!string.IsNullOrWhiteSpace(stream.Language))
-                languages.Add(stream.Language.ToLowerInvariant());
+            var lang = (stream.DisplayLanguage ?? "").ToLowerInvariant().Trim();
+            if (string.IsNullOrEmpty(lang)) continue;
+
+            var iconName = lang switch
+            {
+                "french"  => "lang_french",
+                "english" => "lang_english",
+                _         => null
+            };
+
+            if (iconName is not null && seen.Add(iconName))
+                icons.Add(iconName);
         }
 
-        return languages.ToList();
+        return icons;
     }
 }
 
 public class MediaInfo
 {
-    public Resolution Resolution { get; set; } = Resolution.Unknown;
-    public List<string> Languages { get; set; } = new();
-    public bool HasMultipleVersions { get; set; }
-}
+    /// <summary>Nom de l'icône résolution (ex: "res_1080p"), ou null.</summary>
+    public string? ResolutionIcon { get; set; }
 
-public enum Resolution
-{
-    Unknown,
-    SD,
-    HD,
-    FullHD,
-    UHD4K
+    /// <summary>Liste des icônes langue audio (ex: ["lang_french", "lang_english"]).</summary>
+    public List<string> AudioLanguages { get; set; } = new();
+
+    /// <summary>True si plusieurs versions du média existent.</summary>
+    public bool HasMultipleVersions { get; set; }
 }

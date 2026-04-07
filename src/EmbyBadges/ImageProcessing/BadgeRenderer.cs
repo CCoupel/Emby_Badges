@@ -9,17 +9,15 @@ using SkiaSharp;
 namespace EmbyBadges.ImageProcessing;
 
 /// <summary>
-/// Dessine les badges sur une image avec SkiaSharp.
+/// Superpose les badges PNG (résolution, langue) et les badges texte (VO, MULTI)
+/// sur une image avec SkiaSharp.
 /// </summary>
 public class BadgeRenderer
 {
     private readonly ILogger _logger;
 
-    // Couleurs des badges par type
-    private static readonly SKColor ColorResolution = new SKColor(0, 0, 0, 200);
-    private static readonly SKColor ColorLanguage   = new SKColor(30, 30, 120, 200);
-    private static readonly SKColor ColorMulti      = new SKColor(120, 60, 0, 200);
-    private static readonly SKColor ColorText       = SKColors.White;
+    private static readonly SKColor ColorMulti = new SKColor(180, 90, 0);
+    private static readonly SKColor ColorVo    = new SKColor(30, 100, 180);
 
     public BadgeRenderer(ILogger logger)
     {
@@ -36,136 +34,182 @@ public class BadgeRenderer
 
         using var surface = SKSurface.Create(new SKImageInfo(original.Width, original.Height));
         var canvas = surface.Canvas;
-
-        // Dessiner l'image originale
         canvas.DrawBitmap(original, 0, 0);
 
-        // Construire la liste des badges à afficher
-        var badges = BuildBadgeList(mediaInfo, config);
+        int iconSize = (int)Math.Clamp(Math.Min(original.Width, original.Height) * config.BadgeSizePercent / 100.0, 20, 200);
+        int margin   = (int)Math.Clamp(original.Width * config.BadgeMarginPercent / 100.0, 4, 80);
+        int spacing  = Math.Max(2, iconSize / 10);
 
-        // Dessiner les badges positionnés
-        DrawBadges(canvas, badges, original.Width, original.Height, config);
+        var badges = BuildBadgeList(mediaInfo, config);
+        DrawBadges(canvas, badges, original.Width, original.Height, iconSize, margin, spacing, config);
 
         canvas.Flush();
 
-        // Écrire le résultat
         using var image = surface.Snapshot();
-        using var data = image.Encode(SKEncodedImageFormat.Jpeg, 95);
-        using var outputStream = File.OpenWrite(outputFile);
-        data.SaveTo(outputStream);
+        using var data  = image.Encode(SKEncodedImageFormat.Jpeg, 92);
+
+        var tmp = outputFile + ".tmp";
+        using (var outputStream = File.OpenWrite(tmp))
+            data.SaveTo(outputStream);
+        File.Move(tmp, outputFile, overwrite: true);
 
         return Task.CompletedTask;
     }
 
-    private List<BadgeInfo> BuildBadgeList(MediaInfo mediaInfo, PluginConfiguration config)
+    private List<BadgeItem> BuildBadgeList(MediaInfo mediaInfo, PluginConfiguration config)
     {
-        var badges = new List<BadgeInfo>();
+        var badges = new List<BadgeItem>();
 
-        // Badge résolution
-        if (config.ShowResolutionBadge)
+        // Résolution
+        if (config.ShowResolutionBadge && mediaInfo.ResolutionIcon is not null)
         {
-            var (label, show) = mediaInfo.Resolution switch
+            bool show = mediaInfo.ResolutionIcon switch
             {
-                Resolution.UHD4K  => ("4K",   config.Show4K),
-                Resolution.FullHD => ("FHD",  config.ShowFullHd),
-                Resolution.HD     => ("HD",   config.ShowHd),
-                Resolution.SD     => ("SD",   config.ShowSd),
-                _                 => (null,   false)
+                "res_4k"    => config.Show4K,
+                "res_1080p" => config.ShowFullHd,
+                "res_720p"  => config.ShowHd,
+                "res_480p"  => config.ShowSd,
+                _           => false
             };
-            if (show && label is not null)
-                badges.Add(new BadgeInfo(label, ColorResolution));
+            if (show)
+            {
+                var icon = IconLoader.Get(mediaInfo.ResolutionIcon);
+                if (icon is not null)
+                    badges.Add(new PngBadge(icon));
+            }
         }
 
-        // Badges langue
+        // Langues audio
         if (config.ShowLanguageBadge)
         {
-            foreach (var lang in mediaInfo.Languages)
+            foreach (var langIcon in mediaInfo.AudioLanguages)
             {
-                var (label, show) = lang switch
+                bool show = langIcon switch
                 {
-                    "fre" or "fra" or "fr" => ("FR",  config.ShowFrench),
-                    "eng" or "en"          => ("EN",  config.ShowEnglish),
-                    _                      => (null,  false)
+                    "lang_french"  => config.ShowFrench,
+                    "lang_english" => config.ShowEnglish,
+                    _              => false
                 };
-                if (show && label is not null)
-                    badges.Add(new BadgeInfo(label, ColorLanguage));
-            }
+                if (!show) continue;
 
-            // VO : si la langue originale n'est pas FR ni EN
-            if (config.ShowOriginalVersion)
-                badges.Add(new BadgeInfo("VO", ColorLanguage));
+                var icon = IconLoader.Get(langIcon);
+                if (icon is not null)
+                    badges.Add(new PngBadge(icon));
+            }
         }
 
-        // Badge versions multiples
+        // Badge VO si aucune langue reconnue
+        if (config.ShowLanguageBadge && config.ShowOriginalVersion && badges.Count == 0)
+            badges.Add(new TextBadge("VO", ColorVo));
+
+        // Versions multiples
         if (config.ShowMultiVersionBadge && mediaInfo.HasMultipleVersions)
-            badges.Add(new BadgeInfo("MULTI", ColorMulti));
+            badges.Add(new TextBadge("MULTI", ColorMulti));
 
         return badges;
     }
 
-    private void DrawBadges(SKCanvas canvas, List<BadgeInfo> badges, int imageWidth, int imageHeight, PluginConfiguration config)
+    private static void DrawBadges(SKCanvas canvas, List<BadgeItem> badges,
+        int imgW, int imgH, int iconSize, int margin, int spacing,
+        PluginConfiguration config)
     {
         if (badges.Count == 0) return;
 
-        var badgeH = config.BadgeSize;
-        var margin = config.BadgeMargin;
-        var spacing = config.BadgeSpacing;
-        var opacity = (byte)(config.BadgeOpacity * 255);
-
-        using var textPaint = new SKPaint
+        float x = config.Position switch
         {
-            Color = ColorText,
-            TextSize = badgeH * 0.55f,
-            IsAntialias = true,
-            Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold),
-            TextAlign = SKTextAlign.Center
-        };
-
-        // Calcul de la largeur de chaque badge selon son texte
-        float totalWidth = 0;
-        var widths = new List<float>();
-        foreach (var badge in badges)
-        {
-            var w = textPaint.MeasureText(badge.Label) + badgeH * 0.5f;
-            widths.Add(w);
-            totalWidth += w + spacing;
-        }
-        totalWidth -= spacing;
-
-        // Position de départ selon le coin choisi
-        float startX = config.Position switch
-        {
-            BadgePosition.BottomRight or BadgePosition.TopRight => imageWidth - margin - totalWidth,
+            BadgePosition.BottomRight or BadgePosition.TopRight
+                => imgW - margin - TotalWidth(badges, iconSize, spacing),
             _ => margin
         };
-        float startY = config.Position switch
+
+        float y = config.Position switch
         {
             BadgePosition.TopLeft or BadgePosition.TopRight => margin,
-            _ => imageHeight - margin - badgeH
+            _ => imgH - margin - iconSize
         };
 
-        float x = startX;
-        for (int i = 0; i < badges.Count; i++)
+        foreach (var badge in badges)
         {
-            var badge = badges[i];
-            var w = widths[i];
-            var rect = new SKRoundRect(new SKRect(x, startY, x + w, startY + badgeH), badgeH * 0.2f);
-
-            // Fond du badge
-            using var bgPaint = new SKPaint
-            {
-                Color = badge.Color.WithAlpha(opacity),
-                IsAntialias = true
-            };
-            canvas.DrawRoundRect(rect, bgPaint);
-
-            // Texte centré verticalement
-            var textY = startY + (badgeH + textPaint.TextSize) / 2f - textPaint.FontMetrics.Descent;
-            canvas.DrawText(badge.Label, x + w / 2f, textY, textPaint);
-
+            float w = badge.Width(iconSize);
+            badge.Draw(canvas, x, y, iconSize, config.BadgeOpacity);
             x += w + spacing;
         }
     }
 
-    private record BadgeInfo(string Label, SKColor Color);
+    private static float TotalWidth(List<BadgeItem> badges, int iconSize, int spacing)
+    {
+        float total = 0;
+        foreach (var b in badges) total += b.Width(iconSize) + spacing;
+        return total - spacing;
+    }
+
+    private abstract class BadgeItem
+    {
+        public abstract float Width(int iconSize);
+        public abstract void Draw(SKCanvas canvas, float x, float y, int iconSize, float opacity);
+    }
+
+    private class PngBadge : BadgeItem
+    {
+        private readonly SKImage _image;
+        public PngBadge(SKImage image) => _image = image;
+
+        public override float Width(int iconSize)
+            => iconSize * ((float)_image.Width / _image.Height);
+
+        public override void Draw(SKCanvas canvas, float x, float y, int iconSize, float opacity)
+        {
+            float w = Width(iconSize);
+            using var paint = new SKPaint
+            {
+                IsAntialias = true,
+                Color       = SKColors.White.WithAlpha((byte)(opacity * 255))
+            };
+            canvas.DrawImage(_image, new SKRect(x, y, x + w, y + iconSize), paint);
+        }
+    }
+
+    private class TextBadge : BadgeItem
+    {
+        private readonly string _label;
+        private readonly SKColor _bgColor;
+
+        public TextBadge(string label, SKColor bgColor)
+        {
+            _label   = label;
+            _bgColor = bgColor;
+        }
+
+        public override float Width(int iconSize)
+        {
+            using var paint = MakeTextPaint(iconSize);
+            return paint.MeasureText(_label) + iconSize * 0.4f;
+        }
+
+        public override void Draw(SKCanvas canvas, float x, float y, int iconSize, float opacity)
+        {
+            float w = Width(iconSize);
+            var rect = new SKRoundRect(new SKRect(x, y, x + w, y + iconSize), iconSize * 0.18f);
+
+            using var bgPaint = new SKPaint
+            {
+                Color       = _bgColor.WithAlpha((byte)(opacity * 220)),
+                IsAntialias = true
+            };
+            canvas.DrawRoundRect(rect, bgPaint);
+
+            using var textPaint = MakeTextPaint(iconSize);
+            textPaint.Color = SKColors.White.WithAlpha((byte)(opacity * 255));
+            float textY = y + (iconSize + textPaint.TextSize) / 2f - textPaint.FontMetrics.Descent;
+            canvas.DrawText(_label, x + w / 2f, textY, textPaint);
+        }
+
+        private static SKPaint MakeTextPaint(int iconSize) => new SKPaint
+        {
+            TextSize    = iconSize * 0.52f,
+            IsAntialias = true,
+            Typeface    = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold),
+            TextAlign   = SKTextAlign.Center
+        };
+    }
 }

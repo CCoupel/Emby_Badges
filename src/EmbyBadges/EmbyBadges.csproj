@@ -35,6 +35,12 @@
   <!-- Ressources embarquées -->
   <ItemGroup>
     <EmbeddedResource Include="Configuration\configPage.html" />
+    <EmbeddedResource Include="Icons\res_480p.png" />
+    <EmbeddedResource Include="Icons\res_720p.png" />
+    <EmbeddedResource Include="Icons\res_1080p.png" />
+    <EmbeddedResource Include="Icons\res_4k.png" />
+    <EmbeddedResource Include="Icons\lang_french.png" />
+    <EmbeddedResource Include="Icons\lang_english.png" />
   </ItemGroup>
 
 </Project>

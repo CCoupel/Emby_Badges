@@ -65,13 +65,13 @@ public class BadgeEnhancer : IImageEnhancer
         return string.Join("_",
             nameof(EmbyBadges),
             config.Position,
-            config.BadgeSize,
+            config.BadgeSizePercent,
             config.BadgeOpacity,
             config.ShowResolutionBadge,
             config.ShowLanguageBadge,
             config.ShowMultiVersionBadge,
-            mediaInfo.Resolution,
-            string.Join(",", mediaInfo.Languages),
+            mediaInfo.ResolutionIcon,
+            string.Join(",", mediaInfo.AudioLanguages),
             mediaInfo.HasMultipleVersions
         );
     }
