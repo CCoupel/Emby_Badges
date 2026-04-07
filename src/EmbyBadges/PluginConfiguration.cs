@@ -4,37 +4,56 @@ namespace EmbyBadges;
 
 public class PluginConfiguration : BasePluginConfiguration
 {
-    // --- Activation globale ---
     public bool EnableBadges { get; set; } = true;
 
-    // --- Badges résolution ---
-    public bool ShowResolutionBadge { get; set; } = true;
-    public bool ShowSd { get; set; } = true;
-    public bool ShowHd { get; set; } = true;
-    public bool ShowFullHd { get; set; } = true;
-    public bool Show4K { get; set; } = true;
+    // Paramètres partagés par groupe
+    public GroupConfig Resolution   { get; set; } = new() { Position = BadgePosition.BottomLeft };
+    public GroupConfig Language     { get; set; } = new() { Position = BadgePosition.BottomLeft };
+    public GroupConfig MultiVersion { get; set; } = new() { Position = BadgePosition.TopRight };
+    public GroupConfig Favorites    { get; set; } = new() { Position = BadgePosition.BottomRight };
 
-    // --- Badges langue ---
-    public bool ShowLanguageBadge { get; set; } = true;
-    public bool ShowFrench { get; set; } = true;
-    public bool ShowEnglish { get; set; } = true;
-    public bool ShowOriginalVersion { get; set; } = true;
+    /// <summary>Déclencheur du badge multi-version.</summary>
+    public MultiVersionTrigger MultiVersionTrigger { get; set; } = MultiVersionTrigger.MultiVersionOnly;
 
-    // --- Badge versions multiples ---
-    public bool ShowMultiVersionBadge { get; set; } = true;
+    // Activation individuelle par badge
+    public bool ShowSd        { get; set; } = true;
+    public bool ShowHd        { get; set; } = true;
+    public bool ShowFullHd    { get; set; } = true;
+    public bool Show4K        { get; set; } = true;
+    public bool ShowFrench    { get; set; } = true;
+    public bool ShowEnglish   { get; set; } = true;
+    public bool ShowVo        { get; set; } = true;
+    public bool ShowMulti     { get; set; } = true;
+    public bool ShowFavorites { get; set; } = true;
+}
 
-    // --- Apparence ---
+public class GroupConfig
+{
     public BadgePosition Position { get; set; } = BadgePosition.BottomLeft;
-    public int BadgeSize { get; set; } = 40;          // hauteur en pixels
-    public int BadgeMargin { get; set; } = 8;          // marge bord image en pixels
-    public int BadgeSpacing { get; set; } = 4;         // espace entre badges en pixels
-    public float BadgeOpacity { get; set; } = 0.90f;   // 0.0 à 1.0
+    /// <summary>Hauteur en % de la plus petite dimension de l'image (1–20).</summary>
+    public double SizePercent   { get; set; } = 8.0;
+    /// <summary>Marge par rapport au bord en % de la largeur (0–10).</summary>
+    public double MarginPercent { get; set; } = 2.0;
+    /// <summary>Opacité 0.0–1.0.</summary>
+    public float Opacity        { get; set; } = 0.92f;
+}
+
+public enum MultiVersionTrigger
+{
+    /// <summary>Badge affiché uniquement si le média a plusieurs versions.</summary>
+    MultiVersionOnly,
+    /// <summary>Badge affiché dès que le média provient de VirtualLib (même version unique).</summary>
+    AlwaysForVirtualLib
 }
 
 public enum BadgePosition
 {
     BottomLeft,
+    BottomCenter,
     BottomRight,
+    CenterLeft,
+    CenterRight,
     TopLeft,
+    TopCenter,
     TopRight
 }

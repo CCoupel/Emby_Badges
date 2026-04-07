@@ -4,139 +4,125 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Emby_Badges** is a C# Emby Media Server plugin that overlays visual badges on media thumbnails/posters in the library. The badges indicate:
+**Emby_Badges** is a C# Emby Media Server plugin that overlays visual badges on media thumbnails/posters. The badges display:
 
-- **Resolution** of available versions: SD, HD, FHD (1080p), 4K
-- **Audio/subtitle languages** available: VO, EN, FR (configurable)
-- **Multiple versions** of the same media (e.g., several files with different quality)
+- **Resolution** of all available versions: SD (480p), HD (720p), Full HD (1080p), 4K
+- **Audio language**: French, English, VO (audio present but unknown language)
+- **Multi-version / VirtualLib**: connector initial letter (or "MULTI"), with configurable trigger
+- **Favorites**: heart icon when the item is marked as favorite by the first user
 
-The plugin includes a **configuration page** (standard Emby plugin config UI) allowing users to:
-- Enable/disable each badge type individually
-- Set badge color and size
-- Choose which languages to identify and display
+Each badge group (Resolution, Language, MultiVersion, Favorites) has independent position, size, margin, and opacity settings. Individual badges within a group share those settings but can be individually enabled/disabled.
 
 ## Technology Stack
 
 - **Language:** C# / .NET 6
-- **Build:** NuGet / `dotnet` CLI
-- **Image rendering:** SkiaSharp (bundled with the plugin)
+- **Build:** `dotnet` CLI (user-level install, not in PATH)
+- **Image rendering:** SkiaSharp 2.88.6 (bundled)
 - **Target:** Emby Media Server plugin (`net6.0`)
-- **Deployment:** Kubernetes (Rancher cluster)
+- **Deployment:** Kubernetes (Rancher cluster, namespace `media`, deployment `emby2`)
 
 ## Build
 
-Le SDK .NET 6 est installé en user-level (pas dans le PATH système) :
-
 ```bash
-DOTNET="C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe"
-"$DOTNET" build src/EmbyBadges/ --configuration Release --output dist/
+"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe" build \
+  src/EmbyBadges/EmbyBadges.csproj \
+  --configuration Release \
+  --output dist/
 ```
 
-Produit `dist/EmbyBadges.dll`.
+Produces `dist/EmbyBadges.dll`. Run `/build` for the full build + deploy sequence.
+
+### Config page generation
+
+`configPage.html` and `configScript.js` are generated from `gen_config_page.py` (which inlines icon PNGs as base64):
+
+```bash
+python gen_config_page.py
+```
+
+Must be run before building when the config page changes.
 
 ## Deploy
 
-Le serveur Emby tourne dans Kubernetes (namespace `media`, deployment `emby2`). Le kubeconfig est dans `private/kubeconfig.yml` (gitignored).
+See `.claude/commands/build.md` for the full deploy sequence with all critical rules. Key points:
 
-### Procédure complète
+- **Kubeconfig**: `export KUBECONFIG=private/kubeconfig.yml` (gitignored, required)
+- **Destination path**: `/config/plugins/EmbyBadges.dll` — root of plugins folder, **not** a subdirectory
+- **`MSYS_NO_PATHCONV=1`**: required on Git Bash/Windows for all kubectl commands with absolute Linux paths
+- **Source path**: relative (`dist/EmbyBadges.dll`), not absolute
+- Copy **before** restart; verify DLL size in the **new** pod after restart
+- **Never deploy to `emby`** (production) — only `emby2`
 
-```bash
-KUBECONFIG="C:/Users/cyril/Documents/VScode/GITHUB/Emby_Badges/private/kubeconfig.yml"
-
-# 1. Récupérer le nom du pod courant
-POD=$(MSYS_NO_PATHCONV=1 kubectl --kubeconfig "$KUBECONFIG" -n media get pods -l app=emby2 -o jsonpath='{.items[0].metadata.name}')
-
-# 2. Copier le DLL (chemin source relatif obligatoire — Git Bash convertit les chemins absolus)
-cd C:/Users/cyril/Documents/VScode/GITHUB/Emby_Badges
-MSYS_NO_PATHCONV=1 kubectl --kubeconfig "$KUBECONFIG" -n media cp dist/EmbyBadges.dll $POD:/config/plugins/EmbyBadges/EmbyBadges.dll
-
-# 3. Redémarrer Emby et attendre
-MSYS_NO_PATHCONV=1 kubectl --kubeconfig "$KUBECONFIG" -n media rollout restart deployment/emby2
-MSYS_NO_PATHCONV=1 kubectl --kubeconfig "$KUBECONFIG" -n media rollout status deployment/emby2 --timeout=60s
-```
-
-> `MSYS_NO_PATHCONV=1` est requis sur Git Bash/Windows pour éviter la conversion des chemins de destination kubectl. Toujours utiliser un chemin **relatif** pour la source du `cp`.
-
-Le plugin est chargé depuis `/config/plugins/EmbyBadges/EmbyBadges.dll` dans le pod.
-
-
-## Release CI (GitHub Actions)
-
-Le workflow `.github/workflows/release.yml` se déclenche sur un tag `vX.Y.Z` :
+## Release
 
 ```bash
 git tag v1.0.0
 git push origin v1.0.0
 ```
 
-Build en Release avec la version extraite du tag → GitHub Release créée automatiquement avec `dist/EmbyBadges.dll`.
+The `.github/workflows/release.yml` CI triggers on `vX.Y.Z` tags, builds in Release with version from tag, and creates a GitHub Release with `dist/EmbyBadges.dll`.
 
 ## Emby Plugin Architecture
 
 ### Badge rendering — `IImageEnhancer`
 
-Badges are rendered using the official Emby `IImageEnhancer` interface (`MediaBrowser.Controller.Providers`). This is the correct, supported approach — **not** CSS/JS injection (impossible server-side) and **not** a custom HTTP interceptor.
-
-Emby auto-discovers any class implementing `IImageEnhancer` in the plugin DLL. No manual registration needed in `Plugin.cs`.
-
-**Key methods to implement:**
+`BadgeEnhancer` implements `IImageEnhancer` (auto-discovered by Emby, no manual registration needed). Key contract:
 
 | Method | Role |
 |---|---|
-| `Supports(item, imageType)` | Filter which image types (Primary, Thumb) and item types (Movie, Episode…) to process |
-| `EnhanceImageAsync(item, inputFile, outputFile, ...)` | Read inputFile, composite badges with SkiaSharp, write outputFile |
-| `GetConfigurationCacheKey(item, imageType)` | Return a deterministic string — Emby uses this to cache/invalidate enhanced images |
-| `GetEnhancedImageSize(item, imageType, index, originalSize)` | Return `originalSize` (badges drawn in-canvas, no resize) |
+| `Supports(item, imageType)` | Primary/Thumb images, Movie/Episode items only |
+| `GetConfigurationCacheKey(item, imageType)` | Must include ALL state affecting rendering — Emby caches images globally (not per-user) |
+| `EnhanceImageAsync(...)` | Read inputFile → composite badges via SkiaSharp → write outputFile |
+| `GetEnhancedImageSize(...)` | Returns `originalSize` (badges drawn in-canvas, no resize) |
 
-The enhancer pipeline is chained: each enhancer's `outputFile` becomes the next one's `inputFile`. Use `MetadataProviderPriority.Last` to run after all others.
+**Cache key completeness is critical.** Missing any field (e.g. `IsFavorite`, `IsFromVirtualLib`) causes stale cached images. The cache key includes: all `GroupConfig` fields, all `ShowXxx` flags, `MultiVersionTrigger`, `ResolutionIcons`, `AudioLanguages`, `VersionConnectors`, `IsFromVirtualLib`, `IsFavorite`.
 
-**Badge data source:** Read resolution and language from `item` media stream properties (available via `BaseItem` API — no separate API call needed).
+**Favorites limitation:** Images are cached globally — true per-user favorites badges aren't feasible. The plugin checks only `userManager.Users.FirstOrDefault()` (the first/admin user).
 
-### Plugin registration — `Plugin.cs`
+### Config page — Emby HTML fragment
 
-`Plugin.cs` must inherit `BasePlugin<PluginConfiguration>` and override:
-- `Id` — a stable GUID (never change after first release)
-- `Name` — display name in Emby UI
+The config page is an HTML **fragment** (no `<html>/<head>/<body>`), with root `<div is="emby-scroller" data-controller="__plugin/EmbyBadgesConfigScript">`. JS is a separate AMD module: `define([], function(){ return function(view){ ... }; })`. Always use `view.querySelector` (scoped to fragment), not `document.querySelector`.
 
-`PluginConfiguration` inherits `BasePluginConfiguration` and holds all user settings (badge toggles, colors, sizes, languages).
+### VirtualLib integration
+
+When VirtualLib plugin is installed, `BadgeDataExtractor` reads `{PluginConfigurationsPath}/VirtualLib.xml` to get `<VirtualLibraryRootPath>`. Media paths under this root follow `{root}/{ConnectorDisplayName}/...`. The connector name is extracted from the first path segment after root and used as the badge label initial.
+
+### Badge positions
+
+8 positions: `TopLeft`, `TopCenter`, `TopRight`, `CenterLeft`, `CenterRight`, `BottomLeft`, `BottomCenter`, `BottomRight`.
+
+### Embedded resources
+
+- `src/EmbyBadges/Icons/*.png` — badge icons (resolution, language flags)
+- `src/EmbyBadges/Icons/badge_font.ttf` — Trebuchet Bold, required for text badges (VO, connector initials) on Alpine Linux where no system fonts are available
+- `src/EmbyBadges/Configuration/configPage.html` and `configScript.js` — generated by `gen_config_page.py`
 
 ### Project structure
 
 ```
 EmbyBadges.sln
-libs/                                # DLLs Emby (committées pour le CI)
-│   MediaBrowser.Common.dll
-│   MediaBrowser.Controller.dll
-│   MediaBrowser.Model.dll
-dist/                                # Sortie du build (gitignorée)
+gen_config_page.py               # Generates configPage.html + configScript.js
+libs/                            # Emby SDK DLLs (committed for CI)
+dist/                            # Build output (gitignored except deps.json)
 src/EmbyBadges/
 ├── EmbyBadges.csproj
-├── Plugin.cs                        # BasePlugin<PluginConfiguration>
-├── PluginConfiguration.cs           # BasePluginConfiguration — user settings
+├── Plugin.cs                    # BasePlugin<PluginConfiguration>; registers config pages
+├── PluginConfiguration.cs       # GroupConfig, BadgePosition, MultiVersionTrigger enums
 ├── Enhancer/
-│   ├── BadgeEnhancer.cs             # IImageEnhancer — auto-découvert par Emby
-│   └── BadgeDataExtractor.cs        # Extrait résolution, langues, versions multiples
+│   ├── BadgeEnhancer.cs         # IImageEnhancer — auto-discovered by Emby
+│   └── BadgeDataExtractor.cs    # Extracts resolution, languages, versions, VL connectors
 ├── ImageProcessing/
-│   └── BadgeRenderer.cs             # Dessin SkiaSharp
+│   ├── BadgeRenderer.cs         # SkiaSharp rendering; badge types: PngBadge, TextBadge, HeartBadge
+│   └── IconLoader.cs            # Thread-safe lazy loader for embedded PNGs and font
 └── Configuration/
-    └── configPage.html              # UI de config Emby (HTML + JS ApiClient)
+    ├── configPage.html           # Generated — HTML fragment for Emby config UI
+    └── configScript.js           # Generated — AMD module for config page JS
 ```
 
-Les DLLs dans `libs/` sont référencées via `<HintPath>` avec `<Private>false</Private>` (présentes au runtime Emby, non bundlées). Copier depuis `Emby_Virtuallib/libs/` ou depuis une installation Emby locale.
-
-### Dépendances
-
-Les DLLs Emby sont référencées localement depuis `libs/` via `<HintPath>` avec `<Private>false</Private>` — elles sont présentes au runtime Emby et ne doivent pas être bundlées dans le DLL du plugin.
-
-SkiaSharp (`2.88.6`) est la seule dépendance NuGet bundlée avec le plugin.
-
-### Reference implementation
-
-**[EmbyIcons](https://github.com/yocksers/EmbyIcons)** (MIT) is an open-source plugin that does exactly this (resolution, language, audio codec, HDR badges). Use it as the primary implementation reference.
+Emby SDK DLLs in `libs/` use `<HintPath>` with `<Private>false</Private>` (present at Emby runtime, not bundled). Copy from `../Emby_Virtuallib/libs/` or a local Emby install.
 
 ## Repository Conventions
 
-- **Language:** Code comments and documentation may be in French
-- **Private files:** All secrets, tokens, API keys, and kubeconfigs live in `private/` — gitignored, never commit
-- **YAML files:** All `.yml`/`.yaml` files are gitignored except those under `.github/`
-- **Emby DLLs:** The `libs/` directory contains Emby SDK DLLs committed intentionally for CI builds without a local Emby installation — do not gitignore `libs/`
+- Code comments and variable names may be in French
+- `private/` is gitignored — kubeconfig and other secrets live there
+- `libs/` is committed intentionally for CI builds
