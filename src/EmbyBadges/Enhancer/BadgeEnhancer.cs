@@ -1,10 +1,12 @@
 using System;
 using System.Threading.Tasks;
 using EmbyBadges.ImageProcessing;
+using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Model.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Drawing;
 using MediaBrowser.Model.Entities;
@@ -20,10 +22,23 @@ public class BadgeEnhancer : IImageEnhancer
 {
     private readonly ILogger _logger;
     private readonly BadgeRenderer _renderer;
+    private readonly ILibraryManager _libraryManager;
+    private readonly IApplicationPaths _appPaths;
+    private readonly IUserDataManager _userDataManager;
+    private readonly IUserManager _userManager;
 
-    public BadgeEnhancer(ILogManager logManager)
+    public BadgeEnhancer(
+        ILogManager logManager,
+        ILibraryManager libraryManager,
+        IApplicationPaths appPaths,
+        IUserDataManager userDataManager,
+        IUserManager userManager)
     {
         _logger = logManager.GetLogger(nameof(BadgeEnhancer));
+        _libraryManager = libraryManager;
+        _appPaths = appPaths;
+        _userDataManager = userDataManager;
+        _userManager = userManager;
         _renderer = new BadgeRenderer(_logger);
     }
 
@@ -60,19 +75,25 @@ public class BadgeEnhancer : IImageEnhancer
         if (config is null)
             return string.Empty;
 
-        var mediaInfo = BadgeDataExtractor.GetMediaInfo(item);
+        var mediaInfo = BadgeDataExtractor.GetMediaInfo(item, _libraryManager, _appPaths, _userDataManager, _userManager, _logger);
 
-        static string BC(BadgeConfig b) =>
-            $"{b.Enabled}{b.Position}{b.SizePercent}{b.MarginPercent}{b.Opacity}";
+        static string GC(GroupConfig g) =>
+            $"{g.Position}{g.SizePercent}{g.MarginPercent}{g.Opacity}";
 
         return string.Join("_",
             nameof(EmbyBadges),
-            BC(config.Sd), BC(config.Hd), BC(config.FullHd), BC(config.Uhd4K),
-            BC(config.French), BC(config.English), BC(config.Vo),
-            BC(config.MultiVersion),
-            mediaInfo.ResolutionIcon,
+            GC(config.Resolution),
+            GC(config.Language),
+            GC(config.MultiVersion),
+            GC(config.Favorites),
+            config.ShowSd, config.ShowHd, config.ShowFullHd, config.Show4K,
+            config.ShowFrench, config.ShowEnglish, config.ShowVo, config.ShowMulti,
+            config.MultiVersionTrigger, config.ShowFavorites,
+            string.Join(",", mediaInfo.ResolutionIcons),
             string.Join(",", mediaInfo.AudioLanguages),
-            mediaInfo.HasMultipleVersions
+            string.Join(",", mediaInfo.VersionConnectors),
+            mediaInfo.IsFromVirtualLib,
+            mediaInfo.IsFavorite
         );
     }
 
@@ -98,7 +119,7 @@ public class BadgeEnhancer : IImageEnhancer
         try
         {
             var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
-            var mediaInfo = BadgeDataExtractor.GetMediaInfo(item);
+            var mediaInfo = BadgeDataExtractor.GetMediaInfo(item, _libraryManager, _appPaths, _userDataManager, _userManager, _logger);
 
             await _renderer.RenderBadgesAsync(inputFile, outputFile, mediaInfo, config);
         }

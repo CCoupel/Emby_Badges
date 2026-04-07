@@ -35,6 +35,8 @@
   <!-- Ressources embarquées -->
   <ItemGroup>
     <EmbeddedResource Include="Configuration\configPage.html" />
+    <EmbeddedResource Include="Configuration\configScript.js" />
+    <EmbeddedResource Include="Icons\badge_font.ttf" />
     <EmbeddedResource Include="Icons\res_480p.png" />
     <EmbeddedResource Include="Icons\res_720p.png" />
     <EmbeddedResource Include="Icons\res_1080p.png" />

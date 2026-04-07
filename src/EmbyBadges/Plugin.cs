@@ -30,9 +30,17 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
         {
             new PluginPageInfo
             {
-                Name = "EmbyBadgesConfig",
+                Name                 = "EmbyBadgesConfig",
                 EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configPage.html",
-                EnableInMainMenu = false
+                EnableInMainMenu     = true,
+                DisplayName          = "Emby Badges",
+                MenuSection          = "server",
+                MenuIcon             = "photo_filter"
+            },
+            new PluginPageInfo
+            {
+                Name                 = "EmbyBadgesConfigScript",
+                EmbeddedResourcePath = $"{GetType().Namespace}.Configuration.configScript.js"
             }
         };
     }
