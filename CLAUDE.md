@@ -94,7 +94,7 @@ When VirtualLib plugin is installed, `BadgeDataExtractor` reads `{PluginConfigur
 ### Language & VO badge logic
 
 - **Audio streams only** — language badges are based exclusively on audio streams. Subtitle streams are never considered.
-- **Original language detection** — via `item.ProductionLocations` (TMDB data). `BaseItem.OriginalLanguage` does not exist in the Emby SDK.
+- **Original language detection** — via `item.ProductionLocations` (TMDB data). `BaseItem.OriginalLanguage` does not exist in the Emby SDK. For `Episode` items, `ProductionLocations` is always empty — navigate up via `GetParent()` twice (Episode → Season → Series) to get the series' locations.
 - **Managed languages**: French, English, Japanese. Any identified audio language outside this set is "unmanaged".
 - **VO badge** — shown only when ALL three conditions hold: `HasUnmanagedAudioLanguage` (an unmanaged audio stream is present) AND `HasKnownOriginCountry` (TMDB has production location data) AND `OriginalLanguageIcon == null` (original language is not managed). A US film with Spanish/Portuguese dubs does NOT show VO (original = EN, managed).
 - **Highlight** — gold border on the badge matching `OriginalLanguageIcon`. VO badge is always highlighted when shown (it IS the original language badge).

@@ -5,6 +5,7 @@ using System.Xml.Linq;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
+using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Logging;
@@ -207,6 +208,15 @@ public static class BadgeDataExtractor
     private static (string? icon, bool hasKnownCountry) DetectOrigin(BaseItem item)
     {
         var locations = item.ProductionLocations;
+
+        // Pour les épisodes, ProductionLocations est vide : remonter à la série parente
+        if ((locations == null || locations.Length == 0) && item is Episode)
+        {
+            var season = item.GetParent();      // Episode → Season
+            var series = season?.GetParent();   // Season → Series
+            locations = series?.ProductionLocations ?? season?.ProductionLocations;
+        }
+
         if (locations == null || locations.Length == 0)
             return (null, false);
 
