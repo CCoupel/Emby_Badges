@@ -240,12 +240,12 @@ public static class BadgeDataExtractor
         };
 
     /// <summary>
-    /// Détecte les langues audio via DisplayLanguage (ex: "French", "English").
-    /// Retourne la liste des noms d'icônes embarquées (ex: "lang_french").
+    /// Détecte les langues audio via DisplayLanguage. Sous-titres exclus intentionnellement.
+    /// Retourne la liste des noms d'icônes embarquées (ex: "lang_french"), dédupliquées.
     /// </summary>
     private static List<string> DetectLanguages(List<MediaStream> audioStreams)
     {
-        var seen = new HashSet<string>();
+        var seen  = new HashSet<string>();
         var icons = new List<string>();
 
         foreach (var stream in audioStreams)
