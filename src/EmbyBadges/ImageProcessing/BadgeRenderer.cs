@@ -64,9 +64,10 @@ public class BadgeRenderer
         TryAddPng(list, mediaInfo.AudioLanguages, config.ShowEnglish,   config.Language, "lang_english",  hl && orig == "lang_english");
         TryAddPng(list, mediaInfo.AudioLanguages, config.ShowJapanese,  config.Language, "lang_japanese", hl && orig == "lang_japanese");
 
-        // VO : au moins un flux audio a une langue identifiée, mais aucune n'est dans les langues gérées (FR/EN/JP)
-        if (config.ShowVo && mediaInfo.HasAnyKnownLanguage && mediaInfo.AudioLanguages.Count == 0)
-            list.Add(new TextBadge("VO", ColorVo, config.Language));
+        // VO : pays d'origine connu mais langue non gérée (ex: film coréen, turc...)
+        // Toujours mis en surbrillance car il représente la langue originale du film
+        if (config.ShowVo && mediaInfo.HasKnownOriginCountry && mediaInfo.OriginalLanguageIcon == null)
+            list.Add(new TextBadge("VO", ColorVo, config.Language) { IsHighlighted = config.HighlightOriginalLanguage });
 
         // Badge multi-version / VirtualLib
         bool showMultiBadge = config.ShowMulti && (
