@@ -77,10 +77,11 @@ public static class BadgeDataExtractor
 
         return new MediaInfo
         {
-            ResolutionIcons       = resIcons,
-            AudioLanguages        = DetectLanguages(audioStreams),
-            OriginalLanguageIcon  = DetectOriginalLanguageIcon(audioStreams),
-            HasAudioStreams        = audioStreams.Count > 0,
+            ResolutionIcons              = resIcons,
+            AudioLanguages               = DetectLanguages(audioStreams),
+            OriginalLanguageIcon         = DetectOriginalLanguageIcon(audioStreams),
+            HasKnownOriginalLanguage     = DetectHasKnownOriginalLanguage(audioStreams),
+            HasAudioStreams               = audioStreams.Count > 0,
             HasMultipleVersions   = hasMultiple,
             IsFromVirtualLib      = isFromVl,
             VersionConnectors     = connectors,
@@ -180,6 +181,16 @@ public static class BadgeDataExtractor
     /// Détecte la langue originale du média via le premier flux audio.
     /// Retourne le nom d'icône (ex: "lang_japanese") ou null si inconnue.
     /// </summary>
+    /// <summary>
+    /// True si le premier flux audio a une langue identifiée (DisplayLanguage non vide),
+    /// même si cette langue n'est pas dans les langues gérées (FR/EN/JP).
+    /// </summary>
+    private static bool DetectHasKnownOriginalLanguage(List<MediaStream> audioStreams)
+    {
+        var first = audioStreams.FirstOrDefault();
+        return first != null && !string.IsNullOrWhiteSpace(first.DisplayLanguage);
+    }
+
     private static string? DetectOriginalLanguageIcon(List<MediaStream> audioStreams)
     {
         var first = audioStreams.FirstOrDefault();
@@ -235,8 +246,11 @@ public class MediaInfo
     /// <summary>Liste des icônes langue audio (ex: ["lang_french", "lang_english"]).</summary>
     public List<string> AudioLanguages { get; set; } = new();
 
-    /// <summary>Icône de la langue originale (premier flux audio), ou null si inconnue.</summary>
+    /// <summary>Icône de la langue originale (premier flux audio), ou null si non gérée.</summary>
     public string? OriginalLanguageIcon { get; set; }
+
+    /// <summary>True si le premier flux audio a une langue identifiée (même non gérée ex: Korean).</summary>
+    public bool HasKnownOriginalLanguage { get; set; }
 
     /// <summary>True si plusieurs versions du média existent.</summary>
     public bool HasMultipleVersions { get; set; }

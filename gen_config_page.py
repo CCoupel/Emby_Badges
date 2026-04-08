@@ -67,7 +67,7 @@ LANG_BADGES = (
     f'<label class="eb-toggle"><input type="checkbox" id="ShowJapanese" />'
     f'{img("lang_japanese", lang_icons["lang_japanese"])}<span>Japonais</span></label>'
     f'<label class="eb-toggle"><input type="checkbox" id="ShowVo" />'
-    f'<span class="eb-text-badge">Unknown</span><span>Unknown (langue non gérée)</span></label>'
+    f'<span class="eb-text-badge">VO</span><span>VO (langue originale non gérée, ex: coréen)</span></label>'
     f'<div style="width:100%;margin-top:8px">'
     f'<label class="eb-toggle"><input type="checkbox" id="HighlightOriginalLanguage" />'
     f'<span>Mettre en surbrillance la langue originale (contour doré sur le premier flux audio)</span></label>'
