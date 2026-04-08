@@ -79,11 +79,12 @@ public static class BadgeDataExtractor
 
         return new MediaInfo
         {
-            ResolutionIcons      = resIcons,
-            AudioLanguages       = DetectLanguages(audioStreams),
-            OriginalLanguageIcon = origIcon,
-            HasKnownOriginCountry = hasKnownCountry,
-            HasAudioStreams       = audioStreams.Count > 0,
+            ResolutionIcons           = resIcons,
+            AudioLanguages            = DetectLanguages(audioStreams),
+            HasUnmanagedAudioLanguage = DetectHasUnmanagedAudioLanguage(audioStreams),
+            OriginalLanguageIcon      = origIcon,
+            HasKnownOriginCountry     = hasKnownCountry,
+            HasAudioStreams            = audioStreams.Count > 0,
             HasMultipleVersions  = hasMultiple,
             IsFromVirtualLib     = isFromVl,
             VersionConnectors    = connectors,
@@ -187,6 +188,22 @@ public static class BadgeDataExtractor
     /// Détecte la langue originale via ProductionLocations (TMDB).
     /// Retourne (icône gérée ou null, pays connu ou non).
     /// </summary>
+    /// <summary>
+    /// True si au moins un flux audio a une langue identifiée non gérée (ex: coréen, turc).
+    /// Déclenche l'affichage du badge VO.
+    /// </summary>
+    private static bool DetectHasUnmanagedAudioLanguage(List<MediaStream> audioStreams)
+        => audioStreams.Any(s =>
+        {
+            var lang = (s.DisplayLanguage ?? "").ToLowerInvariant().Trim();
+            if (string.IsNullOrEmpty(lang)) return false;
+            return lang switch
+            {
+                "french" or "english" or "japanese" => false,
+                _ => true
+            };
+        });
+
     private static (string? icon, bool hasKnownCountry) DetectOrigin(BaseItem item)
     {
         var locations = item.ProductionLocations;
@@ -265,6 +282,9 @@ public class MediaInfo
 
     /// <summary>Icône de la langue du pays d'origine (TMDB ProductionLocations), ou null si non gérée.</summary>
     public string? OriginalLanguageIcon { get; set; }
+
+    /// <summary>True si au moins un flux audio a une langue identifiée non gérée (ex: coréen).</summary>
+    public bool HasUnmanagedAudioLanguage { get; set; }
 
     /// <summary>True si le pays d'origine est connu via TMDB (même si sa langue n'est pas gérée).</summary>
     public bool HasKnownOriginCountry { get; set; }
