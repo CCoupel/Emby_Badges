@@ -77,13 +77,14 @@ public static class BadgeDataExtractor
 
         return new MediaInfo
         {
-            ResolutionIcons     = resIcons,
-            AudioLanguages      = DetectLanguages(audioStreams),
-            HasAudioStreams      = audioStreams.Count > 0,
-            HasMultipleVersions = hasMultiple,
-            IsFromVirtualLib    = isFromVl,
-            VersionConnectors   = connectors,
-            IsFavorite          = DetectFavorite(item, userDataManager, userManager, logger)
+            ResolutionIcons       = resIcons,
+            AudioLanguages        = DetectLanguages(audioStreams),
+            OriginalLanguageIcon  = DetectOriginalLanguageIcon(audioStreams),
+            HasAudioStreams        = audioStreams.Count > 0,
+            HasMultipleVersions   = hasMultiple,
+            IsFromVirtualLib      = isFromVl,
+            VersionConnectors     = connectors,
+            IsFavorite            = DetectFavorite(item, userDataManager, userManager, logger)
         };
     }
 
@@ -176,6 +177,24 @@ public static class BadgeDataExtractor
     }
 
     /// <summary>
+    /// Détecte la langue originale du média via le premier flux audio.
+    /// Retourne le nom d'icône (ex: "lang_japanese") ou null si inconnue.
+    /// </summary>
+    private static string? DetectOriginalLanguageIcon(List<MediaStream> audioStreams)
+    {
+        var first = audioStreams.FirstOrDefault();
+        if (first == null) return null;
+        var lang = (first.DisplayLanguage ?? "").ToLowerInvariant().Trim();
+        return lang switch
+        {
+            "french"   => "lang_french",
+            "english"  => "lang_english",
+            "japanese" => "lang_japanese",
+            _          => null
+        };
+    }
+
+    /// <summary>
     /// Détecte les langues audio via DisplayLanguage (ex: "French", "English").
     /// Retourne la liste des noms d'icônes embarquées (ex: "lang_french").
     /// </summary>
@@ -215,6 +234,9 @@ public class MediaInfo
 
     /// <summary>Liste des icônes langue audio (ex: ["lang_french", "lang_english"]).</summary>
     public List<string> AudioLanguages { get; set; } = new();
+
+    /// <summary>Icône de la langue originale (premier flux audio), ou null si inconnue.</summary>
+    public string? OriginalLanguageIcon { get; set; }
 
     /// <summary>True si plusieurs versions du média existent.</summary>
     public bool HasMultipleVersions { get; set; }

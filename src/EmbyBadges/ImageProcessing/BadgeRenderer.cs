@@ -57,10 +57,12 @@ public class BadgeRenderer
         TryAddPng(list, mediaInfo.ResolutionIcons, config.ShowFullHd, config.Resolution, "res_1080p");
         TryAddPng(list, mediaInfo.ResolutionIcons, config.Show4K,     config.Resolution, "res_4k");
 
-        // Langues audio
-        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowFrench,    config.Language, "lang_french");
-        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowEnglish,   config.Language, "lang_english");
-        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowJapanese,  config.Language, "lang_japanese");
+        // Langues audio — mise en surbrillance si langue originale du média
+        bool hl = config.HighlightOriginalLanguage;
+        string? orig = mediaInfo.OriginalLanguageIcon;
+        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowFrench,    config.Language, "lang_french",   hl && orig == "lang_french");
+        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowEnglish,   config.Language, "lang_english",  hl && orig == "lang_english");
+        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowJapanese,  config.Language, "lang_japanese", hl && orig == "lang_japanese");
 
         // Unknown : flux audio présent mais aucune langue connue → langue originale inconnue
         if (config.ShowVo && mediaInfo.HasAudioStreams && mediaInfo.AudioLanguages.Count == 0)
@@ -90,11 +92,11 @@ public class BadgeRenderer
         return list;
     }
 
-    private static void TryAddPng(List<BadgeItem> list, List<string> actuals, bool enabled, GroupConfig cfg, string expected)
+    private static void TryAddPng(List<BadgeItem> list, List<string> actuals, bool enabled, GroupConfig cfg, string expected, bool highlighted = false)
     {
         if (!enabled || !actuals.Contains(expected)) return;
         var icon = IconLoader.Get(expected);
-        if (icon is not null) list.Add(new PngBadge(icon, cfg));
+        if (icon is not null) list.Add(new PngBadge(icon, cfg) { IsHighlighted = highlighted });
     }
 
     // ── Rendu d'un groupe de badges dans un coin ─────────────────────────────
@@ -149,9 +151,12 @@ public class BadgeRenderer
 
     // ── Types de badges ──────────────────────────────────────────────────────
 
+    private static readonly SKColor ColorHighlight = new SKColor(255, 215, 0); // or
+
     private abstract class BadgeItem
     {
         public GroupConfig BadgeConfig { get; }
+        public bool IsHighlighted { get; set; }
         protected BadgeItem(GroupConfig cfg) => BadgeConfig = cfg;
         public abstract float Width(int iconSize);
         public abstract void Draw(SKCanvas canvas, float x, float y, int iconSize, float opacity);
@@ -171,7 +176,21 @@ public class BadgeRenderer
                 IsAntialias = true,
                 Color       = SKColors.White.WithAlpha((byte)(opacity * 255))
             };
-            canvas.DrawImage(_image, new SKRect(x, y, x + Width(h), y + h), paint);
+            var rect = new SKRect(x, y, x + Width(h), y + h);
+            canvas.DrawImage(_image, rect, paint);
+
+            if (IsHighlighted)
+            {
+                float stroke = Math.Max(2f, h / 10f);
+                using var border = new SKPaint
+                {
+                    Color       = ColorHighlight.WithAlpha((byte)(opacity * 255)),
+                    IsAntialias = true,
+                    Style       = SKPaintStyle.Stroke,
+                    StrokeWidth = stroke
+                };
+                canvas.DrawRect(rect, border);
+            }
         }
     }
 
@@ -192,13 +211,27 @@ public class BadgeRenderer
         public override void Draw(SKCanvas canvas, float x, float y, int h, float opacity)
         {
             float w = Width(h);
+            var rrect = new SKRoundRect(new SKRect(x, y, x + w, y + h), h * 0.2f);
 
             using var bgPaint = new SKPaint
             {
                 Color       = _bg.WithAlpha((byte)(opacity * 210)),
                 IsAntialias = true
             };
-            canvas.DrawRoundRect(new SKRoundRect(new SKRect(x, y, x + w, y + h), h * 0.2f), bgPaint);
+            canvas.DrawRoundRect(rrect, bgPaint);
+
+            if (IsHighlighted)
+            {
+                float stroke = Math.Max(2f, h / 10f);
+                using var border = new SKPaint
+                {
+                    Color       = ColorHighlight.WithAlpha((byte)(opacity * 255)),
+                    IsAntialias = true,
+                    Style       = SKPaintStyle.Stroke,
+                    StrokeWidth = stroke
+                };
+                canvas.DrawRoundRect(rrect, border);
+            }
 
             using var tp = MakePaint(h);
             tp.Color = SKColors.White.WithAlpha((byte)(opacity * 255));

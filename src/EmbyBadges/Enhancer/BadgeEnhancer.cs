@@ -88,9 +88,10 @@ public class BadgeEnhancer : IImageEnhancer
             GC(config.Favorites),
             config.ShowSd, config.ShowHd, config.ShowFullHd, config.Show4K,
             config.ShowFrench, config.ShowEnglish, config.ShowJapanese, config.ShowVo, config.ShowMulti,
-            config.MultiVersionTrigger, config.ShowFavorites,
+            config.MultiVersionTrigger, config.ShowFavorites, config.HighlightOriginalLanguage,
             string.Join(",", mediaInfo.ResolutionIcons),
             string.Join(",", mediaInfo.AudioLanguages),
+            mediaInfo.OriginalLanguageIcon,
             string.Join(",", mediaInfo.VersionConnectors),
             mediaInfo.IsFromVirtualLib,
             mediaInfo.IsFavorite
