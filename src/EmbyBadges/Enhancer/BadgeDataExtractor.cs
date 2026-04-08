@@ -80,7 +80,7 @@ public static class BadgeDataExtractor
             ResolutionIcons              = resIcons,
             AudioLanguages               = DetectLanguages(audioStreams),
             OriginalLanguageIcon         = DetectOriginalLanguageIcon(audioStreams),
-            HasKnownOriginalLanguage     = DetectHasKnownOriginalLanguage(audioStreams),
+            HasAnyKnownLanguage          = DetectHasAnyKnownLanguage(audioStreams),
             HasAudioStreams               = audioStreams.Count > 0,
             HasMultipleVersions   = hasMultiple,
             IsFromVirtualLib      = isFromVl,
@@ -182,14 +182,11 @@ public static class BadgeDataExtractor
     /// Retourne le nom d'icône (ex: "lang_japanese") ou null si inconnue.
     /// </summary>
     /// <summary>
-    /// True si le premier flux audio a une langue identifiée (DisplayLanguage non vide),
+    /// True si au moins un flux audio a une langue identifiée (DisplayLanguage non vide),
     /// même si cette langue n'est pas dans les langues gérées (FR/EN/JP).
     /// </summary>
-    private static bool DetectHasKnownOriginalLanguage(List<MediaStream> audioStreams)
-    {
-        var first = audioStreams.FirstOrDefault();
-        return first != null && !string.IsNullOrWhiteSpace(first.DisplayLanguage);
-    }
+    private static bool DetectHasAnyKnownLanguage(List<MediaStream> audioStreams)
+        => audioStreams.Any(s => !string.IsNullOrWhiteSpace(s.DisplayLanguage));
 
     private static string? DetectOriginalLanguageIcon(List<MediaStream> audioStreams)
     {
@@ -249,8 +246,8 @@ public class MediaInfo
     /// <summary>Icône de la langue originale (premier flux audio), ou null si non gérée.</summary>
     public string? OriginalLanguageIcon { get; set; }
 
-    /// <summary>True si le premier flux audio a une langue identifiée (même non gérée ex: Korean).</summary>
-    public bool HasKnownOriginalLanguage { get; set; }
+    /// <summary>True si au moins un flux audio a une langue identifiée (même non gérée ex: Korean).</summary>
+    public bool HasAnyKnownLanguage { get; set; }
 
     /// <summary>True si plusieurs versions du média existent.</summary>
     public bool HasMultipleVersions { get; set; }

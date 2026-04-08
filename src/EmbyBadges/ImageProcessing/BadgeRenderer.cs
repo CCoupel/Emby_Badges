@@ -64,8 +64,8 @@ public class BadgeRenderer
         TryAddPng(list, mediaInfo.AudioLanguages, config.ShowEnglish,   config.Language, "lang_english",  hl && orig == "lang_english");
         TryAddPng(list, mediaInfo.AudioLanguages, config.ShowJapanese,  config.Language, "lang_japanese", hl && orig == "lang_japanese");
 
-        // VO : la langue originale (1er flux) est identifiée mais n'est pas dans les langues gérées (FR/EN/JP)
-        if (config.ShowVo && mediaInfo.HasKnownOriginalLanguage && mediaInfo.OriginalLanguageIcon == null)
+        // VO : au moins un flux audio a une langue identifiée, mais aucune n'est dans les langues gérées (FR/EN/JP)
+        if (config.ShowVo && mediaInfo.HasAnyKnownLanguage && mediaInfo.AudioLanguages.Count == 0)
             list.Add(new TextBadge("VO", ColorVo, config.Language));
 
         // Badge multi-version / VirtualLib

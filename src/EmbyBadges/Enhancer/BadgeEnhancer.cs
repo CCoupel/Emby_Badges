@@ -92,7 +92,7 @@ public class BadgeEnhancer : IImageEnhancer
             string.Join(",", mediaInfo.ResolutionIcons),
             string.Join(",", mediaInfo.AudioLanguages),
             mediaInfo.OriginalLanguageIcon,
-            mediaInfo.HasKnownOriginalLanguage,
+            mediaInfo.HasAnyKnownLanguage,
             string.Join(",", mediaInfo.VersionConnectors),
             mediaInfo.IsFromVirtualLib,
             mediaInfo.IsFavorite
