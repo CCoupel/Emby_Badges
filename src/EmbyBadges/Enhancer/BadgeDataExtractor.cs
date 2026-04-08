@@ -191,9 +191,10 @@ public static class BadgeDataExtractor
 
             var iconName = lang switch
             {
-                "french"  => "lang_french",
-                "english" => "lang_english",
-                _         => null
+                "french"   => "lang_french",
+                "english"  => "lang_english",
+                "japanese" => "lang_japanese",
+                _          => null
             };
 
             if (iconName is not null && seen.Add(iconName))

@@ -58,12 +58,13 @@ public class BadgeRenderer
         TryAddPng(list, mediaInfo.ResolutionIcons, config.Show4K,     config.Resolution, "res_4k");
 
         // Langues audio
-        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowFrench,  config.Language, "lang_french");
-        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowEnglish, config.Language, "lang_english");
+        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowFrench,    config.Language, "lang_french");
+        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowEnglish,   config.Language, "lang_english");
+        TryAddPng(list, mediaInfo.AudioLanguages, config.ShowJapanese,  config.Language, "lang_japanese");
 
-        // VO : flux audio présent mais aucune langue connue (FR/EN) → langue originale inconnue
+        // Unknown : flux audio présent mais aucune langue connue → langue originale inconnue
         if (config.ShowVo && mediaInfo.HasAudioStreams && mediaInfo.AudioLanguages.Count == 0)
-            list.Add(new TextBadge("VO", ColorVo, config.Language));
+            list.Add(new TextBadge("Unknown", ColorVo, config.Language));
 
         // Badge multi-version / VirtualLib
         bool showMultiBadge = config.ShowMulti && (

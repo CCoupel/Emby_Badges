@@ -22,6 +22,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool Show4K        { get; set; } = true;
     public bool ShowFrench    { get; set; } = true;
     public bool ShowEnglish   { get; set; } = true;
+    public bool ShowJapanese  { get; set; } = true;
     public bool ShowVo        { get; set; } = true;
     public bool ShowMulti     { get; set; } = true;
     public bool ShowFavorites { get; set; } = true;

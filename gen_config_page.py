@@ -13,7 +13,7 @@ def b64(name):
         return base64.b64encode(f.read()).decode()
 
 res_icons  = {k: b64(k) for k in ("res_480p", "res_720p", "res_1080p", "res_4k")}
-lang_icons = {k: b64(k) for k in ("lang_french", "lang_english")}
+lang_icons = {k: b64(k) for k in ("lang_french", "lang_english", "lang_japanese")}
 
 def img(key, data):
     return f'<img src="data:image/png;base64,{data}" class="eb-icon" alt="{key}">'
@@ -64,8 +64,10 @@ LANG_BADGES = (
     f'{img("lang_french", lang_icons["lang_french"])}<span>Français</span></label>'
     f'<label class="eb-toggle"><input type="checkbox" id="ShowEnglish" />'
     f'{img("lang_english", lang_icons["lang_english"])}<span>Anglais</span></label>'
+    f'<label class="eb-toggle"><input type="checkbox" id="ShowJapanese" />'
+    f'{img("lang_japanese", lang_icons["lang_japanese"])}<span>Japonais</span></label>'
     f'<label class="eb-toggle"><input type="checkbox" id="ShowVo" />'
-    f'<span class="eb-text-badge">VO</span><span>VO (si aucune langue)</span></label>'
+    f'<span class="eb-text-badge">Unknown</span><span>Unknown (langue non gérée)</span></label>'
 )
 
 MULTI_BADGES = (

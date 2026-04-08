@@ -43,6 +43,7 @@
     <EmbeddedResource Include="Icons\res_4k.png" />
     <EmbeddedResource Include="Icons\lang_french.png" />
     <EmbeddedResource Include="Icons\lang_english.png" />
+    <EmbeddedResource Include="Icons\lang_japanese.png" />
   </ItemGroup>
 
 </Project>
