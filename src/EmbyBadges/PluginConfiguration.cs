@@ -20,10 +20,12 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool ShowHd        { get; set; } = true;
     public bool ShowFullHd    { get; set; } = true;
     public bool Show4K        { get; set; } = true;
-    public bool ShowFrench    { get; set; } = true;
-    public bool ShowEnglish   { get; set; } = true;
-    public bool ShowJapanese  { get; set; } = true;
-    public bool ShowVo        { get; set; } = true;
+    public bool ShowFrench              { get; set; } = true;
+    public bool ShowEnglish             { get; set; } = true;
+    public bool ShowJapanese            { get; set; } = true;
+    public bool ShowVo                  { get; set; } = true;
+    /// <summary>Met en surbrillance le badge de la langue originale du média (premier flux audio).</summary>
+    public bool HighlightOriginalLanguage { get; set; } = true;
     public bool ShowMulti     { get; set; } = true;
     public bool ShowFavorites { get; set; } = true;
 }

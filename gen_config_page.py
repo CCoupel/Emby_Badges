@@ -67,7 +67,11 @@ LANG_BADGES = (
     f'<label class="eb-toggle"><input type="checkbox" id="ShowJapanese" />'
     f'{img("lang_japanese", lang_icons["lang_japanese"])}<span>Japonais</span></label>'
     f'<label class="eb-toggle"><input type="checkbox" id="ShowVo" />'
-    f'<span class="eb-text-badge">Unknown</span><span>Unknown (langue non gérée)</span></label>'
+    f'<span class="eb-text-badge">VO</span><span>VO (langue originale non gérée, ex: coréen)</span></label>'
+    f'<div style="width:100%;margin-top:8px">'
+    f'<label class="eb-toggle"><input type="checkbox" id="HighlightOriginalLanguage" />'
+    f'<span>Mettre en surbrillance la langue originale (contour doré sur le premier flux audio)</span></label>'
+    f'</div>'
 )
 
 MULTI_BADGES = (
@@ -196,7 +200,9 @@ define([], function () {{
                 view.querySelector('#Show4K').checked      = !!cfg.Show4K;
                 view.querySelector('#ShowFrench').checked  = !!cfg.ShowFrench;
                 view.querySelector('#ShowEnglish').checked = !!cfg.ShowEnglish;
+                view.querySelector('#ShowJapanese').checked = !!cfg.ShowJapanese;
                 view.querySelector('#ShowVo').checked      = !!cfg.ShowVo;
+                view.querySelector('#HighlightOriginalLanguage').checked = cfg.HighlightOriginalLanguage !== false;
                 view.querySelector('#ShowMulti').checked     = !!cfg.ShowMulti;
       setSelect('MultiVersionTrigger', cfg.MultiVersionTrigger || 'MultiVersionOnly');
       view.querySelector('#ShowFavorites').checked = !!cfg.ShowFavorites;
@@ -219,9 +225,11 @@ define([], function () {{
                 cfg.ShowHd      = view.querySelector('#ShowHd').checked;
                 cfg.ShowFullHd  = view.querySelector('#ShowFullHd').checked;
                 cfg.Show4K      = view.querySelector('#Show4K').checked;
-                cfg.ShowFrench  = view.querySelector('#ShowFrench').checked;
-                cfg.ShowEnglish = view.querySelector('#ShowEnglish').checked;
-                cfg.ShowVo      = view.querySelector('#ShowVo').checked;
+                cfg.ShowFrench    = view.querySelector('#ShowFrench').checked;
+                cfg.ShowEnglish   = view.querySelector('#ShowEnglish').checked;
+                cfg.ShowJapanese  = view.querySelector('#ShowJapanese').checked;
+                cfg.ShowVo        = view.querySelector('#ShowVo').checked;
+                cfg.HighlightOriginalLanguage = view.querySelector('#HighlightOriginalLanguage').checked;
                 cfg.ShowMulti            = view.querySelector('#ShowMulti').checked;
       cfg.MultiVersionTrigger  = view.querySelector('#MultiVersionTrigger').value;
       cfg.ShowFavorites = view.querySelector('#ShowFavorites').checked;

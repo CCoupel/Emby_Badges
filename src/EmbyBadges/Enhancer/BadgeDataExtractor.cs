@@ -75,15 +75,20 @@ public static class BadgeDataExtractor
             }
         }
 
+        var (origIcon, hasKnownCountry) = DetectOrigin(item);
+
         return new MediaInfo
         {
-            ResolutionIcons     = resIcons,
-            AudioLanguages      = DetectLanguages(audioStreams),
-            HasAudioStreams      = audioStreams.Count > 0,
-            HasMultipleVersions = hasMultiple,
-            IsFromVirtualLib    = isFromVl,
-            VersionConnectors   = connectors,
-            IsFavorite          = DetectFavorite(item, userDataManager, userManager, logger)
+            ResolutionIcons           = resIcons,
+            AudioLanguages            = DetectLanguages(audioStreams),
+            HasUnmanagedAudioLanguage = DetectHasUnmanagedAudioLanguage(audioStreams),
+            OriginalLanguageIcon      = origIcon,
+            HasKnownOriginCountry     = hasKnownCountry,
+            HasAudioStreams            = audioStreams.Count > 0,
+            HasMultipleVersions  = hasMultiple,
+            IsFromVirtualLib     = isFromVl,
+            VersionConnectors    = connectors,
+            IsFavorite           = DetectFavorite(item, userDataManager, userManager, logger)
         };
     }
 
@@ -176,6 +181,65 @@ public static class BadgeDataExtractor
     }
 
     /// <summary>
+    /// Détecte la langue originale du média via le premier flux audio.
+    /// Retourne le nom d'icône (ex: "lang_japanese") ou null si inconnue.
+    /// </summary>
+    /// <summary>
+    /// Détecte la langue originale via ProductionLocations (TMDB).
+    /// Retourne (icône gérée ou null, pays connu ou non).
+    /// </summary>
+    /// <summary>
+    /// True si au moins un flux audio a une langue identifiée non gérée (ex: coréen, turc).
+    /// Déclenche l'affichage du badge VO.
+    /// </summary>
+    private static bool DetectHasUnmanagedAudioLanguage(List<MediaStream> audioStreams)
+        => audioStreams.Any(s =>
+        {
+            var lang = (s.DisplayLanguage ?? "").ToLowerInvariant().Trim();
+            if (string.IsNullOrEmpty(lang)) return false;
+            return lang switch
+            {
+                "french" or "english" or "japanese" => false,
+                _ => true
+            };
+        });
+
+    private static (string? icon, bool hasKnownCountry) DetectOrigin(BaseItem item)
+    {
+        var locations = item.ProductionLocations;
+        if (locations == null || locations.Length == 0)
+            return (null, false);
+
+        // Premier pays qui mappe vers une langue gérée
+        foreach (var country in locations)
+        {
+            var icon = CountryToLanguageIcon(country);
+            if (icon != null) return (icon, true);
+        }
+
+        // Pays connu mais langue non gérée (ex : Corée du Sud → VO)
+        return (null, true);
+    }
+
+    private static string? CountryToLanguageIcon(string country) =>
+        country.Trim().ToLowerInvariant() switch
+        {
+            "france" or "belgium" or "switzerland" or "luxembourg" or "monaco"
+            or "algeria" or "morocco" or "tunisia" or "senegal" or "ivory coast"
+            or "cameroon" or "french polynesia"
+                => "lang_french",
+
+            "united states of america" or "united states" or "united kingdom"
+            or "australia" or "new zealand" or "ireland" or "canada"
+            or "south africa"
+                => "lang_english",
+
+            "japan" => "lang_japanese",
+
+            _ => null
+        };
+
+    /// <summary>
     /// Détecte les langues audio via DisplayLanguage (ex: "French", "English").
     /// Retourne la liste des noms d'icônes embarquées (ex: "lang_french").
     /// </summary>
@@ -215,6 +279,15 @@ public class MediaInfo
 
     /// <summary>Liste des icônes langue audio (ex: ["lang_french", "lang_english"]).</summary>
     public List<string> AudioLanguages { get; set; } = new();
+
+    /// <summary>Icône de la langue du pays d'origine (TMDB ProductionLocations), ou null si non gérée.</summary>
+    public string? OriginalLanguageIcon { get; set; }
+
+    /// <summary>True si au moins un flux audio a une langue identifiée non gérée (ex: coréen).</summary>
+    public bool HasUnmanagedAudioLanguage { get; set; }
+
+    /// <summary>True si le pays d'origine est connu via TMDB (même si sa langue n'est pas gérée).</summary>
+    public bool HasKnownOriginCountry { get; set; }
 
     /// <summary>True si plusieurs versions du média existent.</summary>
     public bool HasMultipleVersions { get; set; }
