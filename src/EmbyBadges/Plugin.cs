@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Common.Plugins;
+using MediaBrowser.Model.Drawing;
 using MediaBrowser.Model.Plugins;
 using MediaBrowser.Model.Serialization;
 
 namespace EmbyBadges;
 
-public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
+public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages, IHasThumbImage
 {
     public static Plugin? Instance { get; private set; }
 
@@ -23,6 +25,14 @@ public class Plugin : BasePlugin<PluginConfiguration>, IHasWebPages
     public override string Name => "Emby Badges";
 
     public override string Description => "Affiche des badges de résolution et de langue sur les vignettes des médias.";
+
+    public Stream GetThumbImage()
+    {
+        var type = GetType();
+        return type.Assembly.GetManifestResourceStream($"{type.Namespace}.thumb.jpg")!;
+    }
+
+    public ImageFormat ThumbImageFormat => ImageFormat.Jpg;
 
     public IEnumerable<PluginPageInfo> GetPages()
     {
