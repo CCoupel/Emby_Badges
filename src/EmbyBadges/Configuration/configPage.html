@@ -38,6 +38,18 @@
             <span>Activer les badges</span>
           </label>
         </div>
+        <div class="checkboxContainer checkboxContainer-withDescription" style="margin-top:8px">
+          <label>
+            <input type="checkbox" id="DebugMode" is="emby-checkbox" class="emby-checkbox" />
+            <span>Mode debug (affiche la langue originale et les flux audio sur chaque image)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- TMDB -->
+      <div class="detailSection">
+        <div class="detailSectionHeader">Intégration TMDB</div>
+        <div class="inputContainer"><label class="inputLabel inputLabelUnfocused">Clé API TMDB (optionnelle)</label><input type="password" id="TmdbApiKey" class="emby-input" autocomplete="off" placeholder="ex : 8265bd1679663a7ea12ac168da84d2e8" /><div class="fieldDescription">Sans clé : langue originale estimée depuis les pays de production (moins fiable).<br>Avec clé : langue originale exacte depuis TMDB.</div><div style="margin-top:8px;display:flex;align-items:center;gap:10px"><button type="button" id="BtnTestTmdb" is="emby-button" class="emby-button"><span>Tester la clé</span></button><span id="TmdbTestStatus" style="font-size:0.9em"></span></div></div><details style="margin-top:10px"><summary style="cursor:pointer;color:#52b54b;font-size:0.9em">Comment obtenir une clé API TMDB ?</summary><ol style="margin:8px 0 0 20px;line-height:2"><li>Créer un compte sur <a href="https://www.themoviedb.org/signup" target="_blank" style="color:#52b54b">themoviedb.org</a></li><li>Aller dans <b>Settings → API</b></li><li>Cliquer <b>Create</b> → choisir <b>Developer</b></li><li>Remplir le formulaire (usage personnel)</li><li>Copier la <b>clé API (v3 auth)</b></li></ol></details>
       </div>
 
       <!-- Résolution -->

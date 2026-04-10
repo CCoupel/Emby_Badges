@@ -6,6 +6,12 @@ public class PluginConfiguration : BasePluginConfiguration
 {
     public bool EnableBadges { get; set; } = true;
 
+    /// <summary>Clé API TMDB (v3) pour détecter la langue originale précisément. Optionnelle.</summary>
+    public string TmdbApiKey { get; set; } = string.Empty;
+
+    /// <summary>Affiche un overlay de debug sur chaque image avec la langue originale détectée et les flux audio.</summary>
+    public bool DebugMode { get; set; } = false;
+
     // Paramètres partagés par groupe
     public GroupConfig Resolution   { get; set; } = new() { Position = BadgePosition.BottomLeft };
     public GroupConfig Language     { get; set; } = new() { Position = BadgePosition.BottomLeft };

@@ -34,6 +34,12 @@ public class BadgeRenderer
         foreach (var group in badges.GroupBy(b => b.BadgeConfig.Position))
             DrawGroup(canvas, group.ToList(), group.Key, original.Width, original.Height);
 
+        if (config.DebugMode)
+        {
+            var debugText = $"{mediaInfo.OriginDebugText} | origIcon={mediaInfo.OriginalLanguageIcon ?? "null"} | audio=[{string.Join(",", mediaInfo.AudioLanguages)}]";
+            DrawDebugOverlay(canvas, debugText, original.Width, original.Height);
+        }
+
         canvas.Flush();
 
         using var image = surface.Snapshot();
@@ -147,6 +153,28 @@ public class BadgeRenderer
             badge.Draw(canvas, x, y, h, badge.BadgeConfig.Opacity);
             x += w + spacing;
         }
+    }
+
+    private static void DrawDebugOverlay(SKCanvas canvas, string text, int imgW, int imgH)
+    {
+        float fontSize = Math.Max(16, imgW / 35f);
+        using var paint = new SKPaint
+        {
+            TextSize    = fontSize,
+            IsAntialias = true,
+            Typeface    = IconLoader.GetFont(),
+            Color       = SKColors.White
+        };
+        float textW = paint.MeasureText(text);
+        float boxH  = fontSize * 1.6f;
+        float boxW  = textW + 14;
+
+        using var bg = new SKPaint { Color = new SKColor(0, 0, 0, 200), IsAntialias = true };
+        canvas.DrawRect(new SKRect(0, 0, boxW, boxH), bg);
+
+        var m  = paint.FontMetrics;
+        float ty = boxH / 2f - (m.Ascent + m.Descent) / 2f;
+        canvas.DrawText(text, 7, ty, paint);
     }
 
     private static int CalcSize(GroupConfig cfg, int imgW, int imgH)

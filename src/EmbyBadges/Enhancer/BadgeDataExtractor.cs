@@ -1,6 +1,9 @@
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
 using System.Xml.Linq;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller.Entities;
@@ -18,13 +21,17 @@ namespace EmbyBadges.Enhancer;
 /// </summary>
 public static class BadgeDataExtractor
 {
+    private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
+    private static readonly ConcurrentDictionary<string, string?> _tmdbLanguageCache = new(StringComparer.OrdinalIgnoreCase);
+
     public static MediaInfo GetMediaInfo(
         BaseItem item,
         ILibraryManager libraryManager,
         IApplicationPaths appPaths,
         IUserDataManager userDataManager,
         IUserManager userManager,
-        ILogger logger)
+        ILogger logger,
+        string? tmdbApiKey = null)
     {
         var streams = item.GetMediaStreams() ?? new List<MediaStream>();
 
@@ -76,7 +83,7 @@ public static class BadgeDataExtractor
             }
         }
 
-        var (origIcon, hasKnownCountry) = DetectOrigin(item);
+        var (origIcon, hasKnownCountry, originDebug) = DetectOrigin(item, tmdbApiKey, logger);
 
         return new MediaInfo
         {
@@ -89,7 +96,8 @@ public static class BadgeDataExtractor
             HasMultipleVersions  = hasMultiple,
             IsFromVirtualLib     = isFromVl,
             VersionConnectors    = connectors,
-            IsFavorite           = DetectFavorite(item, userDataManager, userManager, logger)
+            IsFavorite           = DetectFavorite(item, userDataManager, userManager, logger),
+            OriginDebugText      = originDebug
         };
     }
 
@@ -205,31 +213,99 @@ public static class BadgeDataExtractor
             };
         });
 
-    private static (string? icon, bool hasKnownCountry) DetectOrigin(BaseItem item)
+    private static (string? icon, bool hasKnownCountry, string debugText) DetectOrigin(BaseItem item, string? apiKey, ILogger logger)
     {
+        // Priorité 1 : TMDB API — retourne directement original_language (ex: "ja", "en")
+        if (!string.IsNullOrEmpty(apiKey))
+        {
+            var lang = FetchTmdbOriginalLanguage(item, apiKey, logger);
+            if (lang != null)
+            {
+                bool known = lang != "xx" && lang.Length >= 2;
+                var icon   = known ? TmdbLangToIcon(lang) : null;
+                return (icon, known, $"TMDB:{lang} icon={icon ?? "null"}");
+            }
+            // Appel échoué → fallback Emby
+        }
+
+        // Fallback : ProductionLocations Emby
         var locations = item.ProductionLocations;
 
-        // Pour les épisodes, ProductionLocations est vide : remonter à la série parente
         if ((locations == null || locations.Length == 0) && item is Episode)
         {
-            var season = item.GetParent();      // Episode → Season
-            var series = season?.GetParent();   // Season → Series
+            var season = item.GetParent();
+            var series = season?.GetParent();
             locations = series?.ProductionLocations ?? season?.ProductionLocations;
         }
 
         if (locations == null || locations.Length == 0)
-            return (null, false);
+            return (null, false, "Emby:no country");
 
-        // Premier pays qui mappe vers une langue gérée
         foreach (var country in locations)
         {
             var icon = CountryToLanguageIcon(country);
-            if (icon != null) return (icon, true);
+            if (icon != null) return (icon, true, $"Emby:{country}→{icon}");
         }
 
-        // Pays connu mais langue non gérée (ex : Corée du Sud → VO)
-        return (null, true);
+        var firstCountry = locations[0];
+        return (null, true, $"Emby:{firstCountry}→unmanaged");
     }
+
+    private static string? FetchTmdbOriginalLanguage(BaseItem item, string apiKey, ILogger logger)
+    {
+        string? tmdbId;
+        string primaryEndpoint;
+
+        if (item is Episode)
+        {
+            var series = item.GetParent()?.GetParent(); // Episode → Season → Series
+            tmdbId          = series?.GetProviderId("Tmdb");
+            primaryEndpoint = "tv";
+        }
+        else
+        {
+            tmdbId          = item.GetProviderId("Tmdb");
+            primaryEndpoint = "movie";
+        }
+
+        if (string.IsNullOrEmpty(tmdbId)) return null;
+
+        var cacheKey = $"{primaryEndpoint}_{tmdbId}";
+        if (_tmdbLanguageCache.TryGetValue(cacheKey, out var cached)) return cached;
+
+        // Essai endpoint principal, puis l'autre en fallback (cas d'identification erronée)
+        var lang = TryFetchTmdbEndpoint(tmdbId, primaryEndpoint, apiKey)
+                ?? TryFetchTmdbEndpoint(tmdbId, primaryEndpoint == "movie" ? "tv" : "movie", apiKey);
+
+        if (lang == null)
+            logger.Warn("EmbyBadges: langue originale TMDB introuvable pour {0} (tmdbId={1})", item.Name, tmdbId);
+
+        _tmdbLanguageCache[cacheKey] = lang;
+        return lang;
+    }
+
+    private static string? TryFetchTmdbEndpoint(string tmdbId, string endpoint, string apiKey)
+    {
+        try
+        {
+            var url = $"https://api.themoviedb.org/3/{endpoint}/{tmdbId}?api_key={apiKey}";
+            using var request  = new HttpRequestMessage(HttpMethod.Get, url);
+            using var response = _httpClient.Send(request);
+            if (!response.IsSuccessStatusCode) return null;
+            using var stream = response.Content.ReadAsStream();
+            using var doc    = JsonDocument.Parse(stream);
+            return doc.RootElement.GetProperty("original_language").GetString();
+        }
+        catch { return null; }
+    }
+
+    private static string? TmdbLangToIcon(string lang) => lang.ToLowerInvariant() switch
+    {
+        "fr" => "lang_french",
+        "en" => "lang_english",
+        "ja" => "lang_japanese",
+        _    => null
+    };
 
     private static string? CountryToLanguageIcon(string country) =>
         country.Trim().ToLowerInvariant() switch
@@ -310,4 +386,7 @@ public class MediaInfo
 
     /// <summary>True si au moins un utilisateur a marqué l'item comme favori.</summary>
     public bool IsFavorite { get; set; }
+
+    /// <summary>Texte de debug : source et langue originale détectée (ex: "TMDB:ja icon=lang_japanese").</summary>
+    public string? OriginDebugText { get; set; }
 }

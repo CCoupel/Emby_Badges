@@ -92,6 +92,34 @@ FAV_BADGES = (
     '<span class="eb-heart">&#10084;</span><span>Favori (au moins un utilisateur)</span></label>'
 )
 
+TMDB_SECTION = (
+    '<div class="inputContainer">'
+    '<label class="inputLabel inputLabelUnfocused">Clé API TMDB (optionnelle)</label>'
+    '<input type="password" id="TmdbApiKey" class="emby-input" autocomplete="off" '
+    'placeholder="ex\u00a0: 8265bd1679663a7ea12ac168da84d2e8" />'
+    '<div class="fieldDescription">'
+    'Sans clé\u00a0: langue originale estimée depuis les pays de production (moins fiable).<br>'
+    'Avec clé\u00a0: langue originale exacte depuis TMDB.'
+    '</div>'
+    '<div style="margin-top:8px;display:flex;align-items:center;gap:10px">'
+    '<button type="button" id="BtnTestTmdb" is="emby-button" class="emby-button">'
+    '<span>Tester la clé</span>'
+    '</button>'
+    '<span id="TmdbTestStatus" style="font-size:0.9em"></span>'
+    '</div>'
+    '</div>'
+    '<details style="margin-top:10px">'
+    '<summary style="cursor:pointer;color:#52b54b;font-size:0.9em">Comment obtenir une clé API TMDB\u00a0?</summary>'
+    '<ol style="margin:8px 0 0 20px;line-height:2">'
+    '<li>Créer un compte sur <a href="https://www.themoviedb.org/signup" target="_blank" style="color:#52b54b">themoviedb.org</a></li>'
+    '<li>Aller dans <b>Settings → API</b></li>'
+    '<li>Cliquer <b>Create</b> → choisir <b>Developer</b></li>'
+    '<li>Remplir le formulaire (usage personnel)</li>'
+    '<li>Copier la <b>clé API (v3 auth)</b></li>'
+    '</ol>'
+    '</details>'
+)
+
 HTML = f"""<div is="emby-scroller" class="view flex flex-direction-column scrollFrameY flex-grow"
      data-horizontal="false" data-forcescrollbar="true" data-centerfocus="true"
      data-bindheader="true" data-controller="__plugin/{CONTROLLER}"
@@ -132,6 +160,18 @@ HTML = f"""<div is="emby-scroller" class="view flex flex-direction-column scroll
             <span>Activer les badges</span>
           </label>
         </div>
+        <div class="checkboxContainer checkboxContainer-withDescription" style="margin-top:8px">
+          <label>
+            <input type="checkbox" id="DebugMode" is="emby-checkbox" class="emby-checkbox" />
+            <span>Mode debug (affiche la langue originale et les flux audio sur chaque image)</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- TMDB -->
+      <div class="detailSection">
+        <div class="detailSectionHeader">Intégration TMDB</div>
+        {TMDB_SECTION}
       </div>
 
       <!-- Résolution -->
@@ -193,6 +233,8 @@ define([], function () {{
         function load() {{
             ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (cfg) {{
                 view.querySelector('#EnableBadges').checked = !!cfg.EnableBadges;
+                view.querySelector('#DebugMode').checked   = !!cfg.DebugMode;
+                view.querySelector('#TmdbApiKey').value = cfg.TmdbApiKey || '';
 
                 view.querySelector('#ShowSd').checked      = !!cfg.ShowSd;
                 view.querySelector('#ShowHd').checked      = !!cfg.ShowHd;
@@ -220,6 +262,8 @@ define([], function () {{
         function save() {{
             ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (cfg) {{
                 cfg.EnableBadges = view.querySelector('#EnableBadges').checked;
+                cfg.DebugMode    = view.querySelector('#DebugMode').checked;
+                cfg.TmdbApiKey   = view.querySelector('#TmdbApiKey').value.trim();
 
                 cfg.ShowSd      = view.querySelector('#ShowSd').checked;
                 cfg.ShowHd      = view.querySelector('#ShowHd').checked;
@@ -249,8 +293,31 @@ define([], function () {{
             }});
         }}
 
+        function testTmdb() {{
+            var key    = view.querySelector('#TmdbApiKey').value.trim();
+            var status = view.querySelector('#TmdbTestStatus');
+            if (!key) {{ status.textContent = 'Entrez une clé d\u2019abord.'; status.style.color = '#e0a000'; return; }}
+            status.textContent = 'Test en cours\u2026';
+            status.style.color = '';
+            fetch('https://api.themoviedb.org/3/movie/550?api_key=' + encodeURIComponent(key))
+                .then(function (r) {{
+                    if (r.ok) {{
+                        status.textContent = '\u2705 Clé valide\u00a0!';
+                        status.style.color = '#52b54b';
+                    }} else {{
+                        status.textContent = '\u274c Clé invalide (HTTP\u00a0' + r.status + ')';
+                        status.style.color = '#cc3333';
+                    }}
+                }})
+                .catch(function () {{
+                    status.textContent = '\u274c Erreur réseau';
+                    status.style.color = '#cc3333';
+                }});
+        }}
+
         view.addEventListener('viewshow', load);
         view.querySelector('#BtnSave').addEventListener('click', save);
+        view.querySelector('#BtnTestTmdb').addEventListener('click', testTmdb);
     }};
 }});
 """

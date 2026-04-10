@@ -17,6 +17,8 @@ define([], function () {
         function load() {
             ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (cfg) {
                 view.querySelector('#EnableBadges').checked = !!cfg.EnableBadges;
+                view.querySelector('#DebugMode').checked   = !!cfg.DebugMode;
+                view.querySelector('#TmdbApiKey').value = cfg.TmdbApiKey || '';
 
                 view.querySelector('#ShowSd').checked      = !!cfg.ShowSd;
                 view.querySelector('#ShowHd').checked      = !!cfg.ShowHd;
@@ -44,6 +46,8 @@ define([], function () {
         function save() {
             ApiClient.getPluginConfiguration(PLUGIN_ID).then(function (cfg) {
                 cfg.EnableBadges = view.querySelector('#EnableBadges').checked;
+                cfg.DebugMode    = view.querySelector('#DebugMode').checked;
+                cfg.TmdbApiKey   = view.querySelector('#TmdbApiKey').value.trim();
 
                 cfg.ShowSd      = view.querySelector('#ShowSd').checked;
                 cfg.ShowHd      = view.querySelector('#ShowHd').checked;
@@ -73,7 +77,30 @@ define([], function () {
             });
         }
 
+        function testTmdb() {
+            var key    = view.querySelector('#TmdbApiKey').value.trim();
+            var status = view.querySelector('#TmdbTestStatus');
+            if (!key) { status.textContent = 'Entrez une clé d’abord.'; status.style.color = '#e0a000'; return; }
+            status.textContent = 'Test en cours…';
+            status.style.color = '';
+            fetch('https://api.themoviedb.org/3/movie/550?api_key=' + encodeURIComponent(key))
+                .then(function (r) {
+                    if (r.ok) {
+                        status.textContent = '✅ Clé valide !';
+                        status.style.color = '#52b54b';
+                    } else {
+                        status.textContent = '❌ Clé invalide (HTTP ' + r.status + ')';
+                        status.style.color = '#cc3333';
+                    }
+                })
+                .catch(function () {
+                    status.textContent = '❌ Erreur réseau';
+                    status.style.color = '#cc3333';
+                });
+        }
+
         view.addEventListener('viewshow', load);
         view.querySelector('#BtnSave').addEventListener('click', save);
+        view.querySelector('#BtnTestTmdb').addEventListener('click', testTmdb);
     };
 });

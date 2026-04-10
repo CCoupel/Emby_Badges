@@ -75,7 +75,7 @@ public class BadgeEnhancer : IImageEnhancer
         if (config is null)
             return string.Empty;
 
-        var mediaInfo = BadgeDataExtractor.GetMediaInfo(item, _libraryManager, _appPaths, _userDataManager, _userManager, _logger);
+        var mediaInfo = BadgeDataExtractor.GetMediaInfo(item, _libraryManager, _appPaths, _userDataManager, _userManager, _logger, Plugin.Instance?.Configuration?.TmdbApiKey);
 
         static string GC(GroupConfig g) =>
             $"{g.Position}{g.SizePercent}{g.MarginPercent}{g.Opacity}";
@@ -89,6 +89,8 @@ public class BadgeEnhancer : IImageEnhancer
             config.ShowSd, config.ShowHd, config.ShowFullHd, config.Show4K,
             config.ShowFrench, config.ShowEnglish, config.ShowJapanese, config.ShowVo, config.ShowMulti,
             config.MultiVersionTrigger, config.ShowFavorites, config.HighlightOriginalLanguage,
+            !string.IsNullOrEmpty(config.TmdbApiKey),
+            config.DebugMode,
             string.Join(",", mediaInfo.ResolutionIcons),
             string.Join(",", mediaInfo.AudioLanguages),
             mediaInfo.OriginalLanguageIcon,
@@ -122,7 +124,7 @@ public class BadgeEnhancer : IImageEnhancer
         try
         {
             var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
-            var mediaInfo = BadgeDataExtractor.GetMediaInfo(item, _libraryManager, _appPaths, _userDataManager, _userManager, _logger);
+            var mediaInfo = BadgeDataExtractor.GetMediaInfo(item, _libraryManager, _appPaths, _userDataManager, _userManager, _logger, Plugin.Instance?.Configuration?.TmdbApiKey);
 
             await _renderer.RenderBadgesAsync(inputFile, outputFile, mediaInfo, config);
         }
