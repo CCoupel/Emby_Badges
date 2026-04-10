@@ -75,7 +75,7 @@ The `.github/workflows/release.yml` CI triggers on `vX.Y.Z` tags, builds in Rele
 | `EnhanceImageAsync(...)` | Read inputFile → composite badges via SkiaSharp → write outputFile |
 | `GetEnhancedImageSize(...)` | Returns `originalSize` (badges drawn in-canvas, no resize) |
 
-**Cache key completeness is critical.** Missing any field (e.g. `IsFavorite`, `IsFromVirtualLib`) causes stale cached images. The cache key includes: all `GroupConfig` fields, all `ShowXxx` flags, `MultiVersionTrigger`, `ResolutionIcons`, `AudioLanguages`, `VersionConnectors`, `IsFromVirtualLib`, `IsFavorite`.
+**Cache key completeness is critical.** Missing any field (e.g. `IsFavorite`, `IsFromVirtualLib`) causes stale cached images. The cache key includes: all `GroupConfig` fields, all `ShowXxx` flags, `MultiVersionTrigger`, `ResolutionIcons`, `AudioLanguages`, `VersionConnectors`, `IsFromVirtualLib`, `IsFavorite`, `DebugMode`, TMDB key presence.
 
 **Favorites limitation:** Images are cached globally — true per-user favorites badges aren't feasible. The plugin checks only `userManager.Users.FirstOrDefault()` (the first/admin user).
 
@@ -94,7 +94,9 @@ When VirtualLib plugin is installed, `BadgeDataExtractor` reads `{PluginConfigur
 ### Language & VO badge logic
 
 - **Audio streams only** — language badges are based exclusively on audio streams. Subtitle streams are never considered.
-- **Original language detection** — via `item.ProductionLocations` (TMDB data). `BaseItem.OriginalLanguage` does not exist in the Emby SDK. For `Episode` items, `ProductionLocations` is always empty — navigate up via `GetParent()` twice (Episode → Season → Series) to get the series' locations.
+- **Original language detection** — preferred: TMDB API (`original_language` field) via `item.GetProviderId("Tmdb")`. Fallback: `item.ProductionLocations` (less reliable — ordering issues with co-productions). `BaseItem.OriginalLanguage` does not exist in the Emby SDK. For `Episode` items, `ProductionLocations` is always empty — navigate up via `GetParent()` twice (Episode → Season → Series) to get the series' locations. TMDB endpoint: try `movie/{id}` first, fallback to `tv/{id}` for misidentified items (404).
+- **TMDB API key** — configured in plugin settings (`TmdbApiKey`). Without it, falls back to `ProductionLocations`. Results cached in-memory (`ConcurrentDictionary`) per Emby session. HTTP calls use `HttpClient.Send()` (synchronous, avoids deadlocks).
+- **Debug mode** — `DebugMode` config flag renders an overlay on each image showing source, `origIcon`, and audio stream languages. Useful for diagnosing metadata issues.
 - **Managed languages**: French, English, Japanese. Any identified audio language outside this set is "unmanaged".
 - **VO badge** — shown only when ALL three conditions hold: `HasUnmanagedAudioLanguage` (an unmanaged audio stream is present) AND `HasKnownOriginCountry` (TMDB has production location data) AND `OriginalLanguageIcon == null` (original language is not managed). A US film with Spanish/Portuguese dubs does NOT show VO (original = EN, managed).
 - **Highlight** — gold border on the badge matching `OriginalLanguageIcon`. VO badge is always highlighted when shown (it IS the original language badge).
