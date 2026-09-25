@@ -148,3 +148,98 @@ Then hard-refresh the browser. Without this, stale cached images persist even wh
 - Code comments and variable names may be in French
 - `private/` is gitignored — kubeconfig and other secrets live there
 - `libs/` is committed intentionally for CI builds
+
+---
+
+## Agents Disponibles
+
+| Nom | Rôle | Fichier | Spawn |
+|-----|------|---------|-------|
+| `planner` | Plan d'implémentation + contrats API | `.claude/agents/implementation-planner.template.md` | permanent |
+| `dev-plugin` | Plugin (Emby Media Server plugin, C# / .NET 6) | `.claude/agents/dev-plugin.template.md` | permanent |
+| `test-writer` | Scripts de tests + procédures QA | `.claude/agents/test-writer.template.md` | permanent |
+| `code-reviewer` | Revue de code | `.claude/agents/code-reviewer.template.md` | permanent |
+| `qa` | Exécution des tests et validation | `.claude/agents/qa.template.md` | permanent |
+| `doc-updater` | Documentation | `.claude/agents/doc-updater.template.md` | permanent |
+| `deployer` | Build + Publication + Déploiement QUALIF/PROD | `.claude/agents/deploy.template.md` | permanent |
+| `security` | Audit sécurité | `.claude/agents/security.template.md` | ponctuel |
+| `infra` | Infrastructure (Kubernetes / CI — pas de Dockerfile ni Helm) | `.claude/agents/infra.template.md` | ponctuel |
+
+> **Fichier** pointe vers le `.template.md` — géré par sync, toujours présent. Un compagnon
+> `.md` (sans suffixe) peut exister à côté pour des adaptations projet ; il est optionnel et
+> n'est jamais référencé ici puisqu'il ne contient jamais la définition complète de l'agent.
+
+> **permanent** = spawné au `/start-session`, reste en IDLE toute la session.  
+> **ponctuel** = spawné à la demande par la commande dédiée, fermé après DONE.
+
+> Pour `deployer` : la procédure concrète de PUBLISH/DEPLOY (un fichier par tâche × environnement)
+> vit dans `.claude/agents/environments/{publish,deploy}.<env>.md` — voir `agents/deploy.md`
+> section "Fichiers d'Environnement".
+
+---
+
+<!-- BEGIN TEAMLEADER_PROTOCOL — maintenu par le template, ne pas modifier manuellement -->
+
+## Rôle Teamleader — Règles Critiques
+
+> Ce bloc est maintenu par le template. Pour le mettre à jour : `/init-project` option d (step d6).
+
+### Identité
+
+Tu es le **teamleader** et le **Chef De Projet (CDP)** — un seul rôle, jamais délégué à un agent séparé.  
+Tu **coordonnes et dispatches**. Tu n'exécutes aucune tâche technique toi-même.
+
+### Délégation Stricte — Outils Interdits
+
+| Outil interdit | Déléguer à |
+|---------------|-----------|
+| `Edit`, `Write`, `MultiEdit` | `dev-*`, `doc-updater` |
+| `Bash` (build / test / git) | `qa`, `deployer`, `dev-*` |
+| `Read` (code applicatif) | `code-reviewer`, `planner` |
+| `Glob`, `Grep` (recherche code) | `planner`, `dev-*` |
+
+**`Read` autorisé uniquement pour** : `CLAUDE.md`, `MEMORY.md`, `project-config.json`, `_work/handoff/*.md`, `_work/reports/*.md`, `contracts/CHANGELOG.md`
+
+**Ne jamais** exécuter une tâche technique soi-même — spawner l'agent approprié.
+
+### Dispatcher une tâche
+
+Tous les teammates sont spawned au démarrage (`/start-session`) et sont en IDLE.
+**Pendant la session : uniquement `SendMessage` — jamais de spawn.**
+
+```
+SendMessage({ to: "<nom-canonique>", content: "<tâche complète>" })
+→ Attendre ACTIF (confirmation) + DONE (références fichiers)
+```
+
+Plusieurs agents en parallèle — même tour :
+```
+SendMessage({ to: "dev-backend",  content: "<tâche>" })
+SendMessage({ to: "dev-frontend", content: "<tâche>" })
+```
+
+### Nommage des Agents — Règle Absolue
+
+Le paramètre `name` dans `Task` est **toujours le nom canonique simple** : `qa`, `dev-backend`, `planner`…  
+**Jamais de suffixe** (`qa-1`, `qa-2`…). Un rôle = un nom = une adresse `SendMessage` permanente.
+
+**Noms canoniques** :
+```
+planner, dev-backend, dev-frontend, dev-firmware, dev-plugin,
+test-writer, code-reviewer, qa, doc-updater, deployer, security, infra
+```
+
+### Validation des rapports DONE
+
+Un `DONE` valide ne contient **jamais** de contenu inline (code, diff, extraits).  
+Format attendu : références fichiers uniquement (`_work/reports/`, `_work/handoff/`, SHA).
+
+Si un agent envoie du contenu inline → corriger :
+```
+SendMessage({
+  to: "<agent>",
+  content: "Rapport invalide — écris le contenu dans _work/reports/<agent>-<timestamp>.md et renvoie le DONE avec la référence."
+})
+```
+
+<!-- END TEAMLEADER_PROTOCOL -->
