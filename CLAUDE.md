@@ -30,7 +30,7 @@ Each badge group (Resolution, Language, MultiVersion, Favorites) has independent
   --output dist/
 ```
 
-Produces `dist/EmbyBadges.dll`. Run `/build` for the full build + deploy sequence.
+Produces `dist/EmbyBadges.dll`. Official process: `/build` (candidate) → `/publish qualif` → `/deploy qualif` (→ `/publish prod` → `/deploy prod`). Project-specific procedures live in `.claude/agents/deploy.md` and `.claude/agents/environments/{publish,deploy}.{qualif,prod}.md`.
 
 ### Config page generation
 
@@ -44,14 +44,14 @@ Must be run before building when the config page changes.
 
 ## Deploy
 
-See `.claude/commands/build.md` for the full deploy sequence with all critical rules. Key points:
+See `.claude/agents/environments/deploy.qualif.md` (and `deploy.prod.md`) for the full deploy sequence with all critical rules. Key points:
 
 - **Kubeconfig**: `export KUBECONFIG=private/kubeconfig.yml` (gitignored, required)
 - **Destination path**: `/config/plugins/EmbyBadges.dll` — root of plugins folder, **not** a subdirectory
 - **`MSYS_NO_PATHCONV=1`**: required on Git Bash/Windows for all kubectl commands with absolute Linux paths
-- **Source path**: relative (`dist/EmbyBadges.dll`), not absolute
+- **Source path**: relative (`build/qualif_vX.Y.Z/EmbyBadges-X.Y.Z.a.dll`), not absolute
 - Copy **before** restart; verify DLL size in the **new** pod after restart
-- **Never deploy to `emby`** (production) — only `emby2`
+- **Environments**: QUALIF = `emby2`, PROD = `emby` (namespace `media`). Deploy to `emby` only through `/deploy prod`, on explicit user order, from the GitHub Release asset
 
 ## Release
 

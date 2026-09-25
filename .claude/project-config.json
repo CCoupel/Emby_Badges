@@ -1,0 +1,48 @@
+{
+  "name": "Emby_Badges",
+  "team_name": "emby-badges-team",
+  "org": "CCoupel",
+  "project": "Emby_Badges",
+  "description": "Plugin Emby Media Server (C#/.NET 6) qui superpose des badges (résolution, langue, multi-version, favoris, note) sur les vignettes/posters.",
+  "version": "0.1.0",
+  "initialized_at": "2026-09-25T10:36:06Z",
+  "initialized_from": "analysis",
+  "src_dir": "src/EmbyBadges",
+  "version_file": "src/EmbyBadges/EmbyBadges.csproj",
+  "stack": {
+    "backend": { "language": "csharp", "framework": ".NET 6" },
+    "frontend": null,
+    "mobile": null,
+    "firmware": null,
+    "plugin": { "platform": "Emby Media Server plugin" },
+    "database": null
+  },
+  "infrastructure": {
+    "cicd": "github-actions",
+    "environments": [
+      {
+        "name": "QUALIF",
+        "order": 1,
+        "publish": { "mode": "promote", "target": "build/qualif_v{X.Y.Z}/" },
+        "deploy":  { "mechanism": "kubernetes", "target": "deployment/emby2 (namespace media)" }
+      },
+      {
+        "name": "PROD",
+        "order": 2,
+        "publish": { "mode": "rebuild-ci", "trigger": "git-tag", "pipeline": ".github/workflows/release.yml" },
+        "deploy":  { "mechanism": "kubernetes", "target": "deployment/emby (namespace media)" }
+      }
+    ]
+  },
+  "testing": { "backend": [], "frontend": [], "e2e": [] },
+  "security": { "concerns": ["api-keys"] },
+  "commands": {
+    "build": "python gen_config_page.py && \"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe\" build src/EmbyBadges/EmbyBadges.csproj --configuration Release --output dist/",
+    "test": "",
+    "lint": "",
+    "audit": "",
+    "typecheck": "",
+    "coverage": ""
+  },
+  "agents": { "idle_ttl_minutes": 15, "idle_warning_interval_minutes": 5 }
+}
