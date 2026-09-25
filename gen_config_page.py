@@ -92,6 +92,11 @@ FAV_BADGES = (
     '<span class="eb-heart">&#10084;</span><span>Favori (au moins un utilisateur)</span></label>'
 )
 
+RATING_BADGES = (
+    '<label class="eb-toggle"><input type="checkbox" id="ShowRating" />'
+    '<span class="eb-text-badge eb-rating">7.8</span><span>Note du média (0–10)</span></label>'
+)
+
 TMDB_SECTION = (
     '<div class="inputContainer">'
     '<label class="inputLabel inputLabelUnfocused">Clé API TMDB (optionnelle)</label>'
@@ -137,6 +142,7 @@ HTML = f"""<div is="emby-scroller" class="view flex flex-direction-column scroll
         .eb-text-badge {{ display:inline-block; padding:2px 10px; border-radius:4px;
           background:rgba(30,100,180,0.8); color:#fff; font-weight:bold; font-size:0.9em; }}
         .eb-multi {{ background:rgba(180,90,0,0.8); }}
+        .eb-rating {{ background:rgba(170,130,0,0.8); }}
         .eb-heart {{ display:inline-block; color:#dc1e3c; font-size:1.4em;
           line-height:1; vertical-align:middle; margin-right:2px; }}
         .eb-toggle {{ display:inline-flex; align-items:center; gap:6px;
@@ -202,6 +208,13 @@ HTML = f"""<div is="emby-scroller" class="view flex flex-direction-column scroll
         {group_settings("Favorites")}
       </div>
 
+      <!-- Note -->
+      <div class="detailSection">
+        <div class="detailSectionHeader">Note</div>
+        <div class="eb-toggles">{RATING_BADGES}</div>
+        {group_settings("Rating")}
+      </div>
+
       <div style="margin-top:1.5em">
         <button id="BtnSave" is="emby-button" class="raised emby-button">
           <span>Enregistrer</span>
@@ -248,8 +261,9 @@ define([], function () {{
                 view.querySelector('#ShowMulti').checked     = !!cfg.ShowMulti;
       setSelect('MultiVersionTrigger', cfg.MultiVersionTrigger || 'MultiVersionOnly');
       view.querySelector('#ShowFavorites').checked = !!cfg.ShowFavorites;
+      view.querySelector('#ShowRating').checked = cfg.ShowRating !== false;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites'].forEach(function (g) {{
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating'].forEach(function (g) {{
                     var gc = cfg[g] || {{}};
                     setSelect(g + '_Position', gc.Position || 'BottomLeft');
                     view.querySelector('#' + g + '_SizePercent').value   = gc.SizePercent   != null ? gc.SizePercent   : 8;
@@ -277,8 +291,9 @@ define([], function () {{
                 cfg.ShowMulti            = view.querySelector('#ShowMulti').checked;
       cfg.MultiVersionTrigger  = view.querySelector('#MultiVersionTrigger').value;
       cfg.ShowFavorites = view.querySelector('#ShowFavorites').checked;
+      cfg.ShowRating = view.querySelector('#ShowRating').checked;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites'].forEach(function (g) {{
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating'].forEach(function (g) {{
                     cfg[g] = {{
                         Position:      view.querySelector('#' + g + '_Position').value,
                         SizePercent:   parseFloat(view.querySelector('#' + g + '_SizePercent').value),

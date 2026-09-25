@@ -24,6 +24,11 @@ public static class BadgeDataExtractor
     private static readonly HttpClient _httpClient = new() { Timeout = TimeSpan.FromSeconds(5) };
     private static readonly ConcurrentDictionary<string, string?> _tmdbLanguageCache = new(StringComparer.OrdinalIgnoreCase);
 
+    // Série/saison → agrégat des flux de tous ses épisodes (TTL court : détecte les épisodes ajoutés,
+    // et évite de reparcourir l'arborescence à chaque calcul de clé de cache).
+    private static readonly ConcurrentDictionary<long, (DateTime at, MediaInfo info)> _aggregateCache = new();
+    private static readonly TimeSpan AggregateTtl = TimeSpan.FromMinutes(10);
+
     public static MediaInfo GetMediaInfo(
         BaseItem item,
         ILibraryManager libraryManager,
@@ -33,6 +38,28 @@ public static class BadgeDataExtractor
         ILogger logger,
         string? tmdbApiKey = null)
     {
+        // Série / saison : pas de flux propres → cumul des résolutions, langues et versions
+        // de tous les épisodes ; note et favori restent ceux de la série/saison.
+        if (item is Series or Season)
+        {
+            var info = AggregateEpisodes((Folder)item, libraryManager, appPaths, userDataManager, userManager, logger, tmdbApiKey);
+            return new MediaInfo
+            {
+                ResolutionIcons           = info.ResolutionIcons,
+                AudioLanguages            = info.AudioLanguages,
+                HasUnmanagedAudioLanguage = info.HasUnmanagedAudioLanguage,
+                OriginalLanguageIcon      = info.OriginalLanguageIcon,
+                HasKnownOriginCountry     = info.HasKnownOriginCountry,
+                HasAudioStreams           = info.HasAudioStreams,
+                HasMultipleVersions       = info.HasMultipleVersions,
+                IsFromVirtualLib          = info.IsFromVirtualLib,
+                VersionConnectors         = info.VersionConnectors,
+                OriginDebugText           = info.OriginDebugText,
+                IsFavorite                = DetectFavorite(item, userDataManager, userManager, logger),
+                Rating                    = RatingOf(item)
+            };
+        }
+
         var streams = item.GetMediaStreams() ?? new List<MediaStream>();
 
         var videoStream = streams.FirstOrDefault(s => s.Type == MediaStreamType.Video);
@@ -97,8 +124,59 @@ public static class BadgeDataExtractor
             IsFromVirtualLib     = isFromVl,
             VersionConnectors    = connectors,
             IsFavorite           = DetectFavorite(item, userDataManager, userManager, logger),
+            Rating               = RatingOf(item),
             OriginDebugText      = originDebug
         };
+    }
+
+    private static float? RatingOf(BaseItem item)
+        => item.CommunityRating is > 0 ? (float)Math.Round(item.CommunityRating.Value, 1) : null;
+
+    /// <summary>Union des données de flux de tous les épisodes (hors note et favori, propres à la série).</summary>
+    private static MediaInfo AggregateEpisodes(
+        Folder folder, ILibraryManager libraryManager, IApplicationPaths appPaths,
+        IUserDataManager userDataManager, IUserManager userManager, ILogger logger, string? tmdbApiKey)
+    {
+        if (_aggregateCache.TryGetValue(folder.InternalId, out var hit) && DateTime.UtcNow - hit.at < AggregateTtl)
+            return hit.info;
+
+        var query = new InternalItemsQuery
+        {
+            Parent           = folder,
+            Recursive        = true,
+            IncludeItemTypes = new[] { nameof(Episode) },
+            MediaTypes       = new[] { MediaType.Video }
+        };
+        var episodes = libraryManager.GetItemList(query)
+            .OfType<Episode>()
+            .OrderBy(e => e.ParentIndexNumber ?? int.MaxValue)
+            .ThenBy(e => e.IndexNumber ?? int.MaxValue)
+            .ToList();
+
+        var agg = new MediaInfo();
+        foreach (var ep in episodes)
+        {
+            // Sans clé TMDB : l'origine est calculée une seule fois plus bas (évite N appels réseau)
+            var e = GetMediaInfo(ep, libraryManager, appPaths, userDataManager, userManager, logger, null);
+            agg.ResolutionIcons = agg.ResolutionIcons.Union(e.ResolutionIcons).ToList();
+            agg.AudioLanguages  = agg.AudioLanguages.Union(e.AudioLanguages).ToList();
+            agg.VersionConnectors = agg.VersionConnectors.Union(e.VersionConnectors, StringComparer.OrdinalIgnoreCase).ToList();
+            agg.HasUnmanagedAudioLanguage |= e.HasUnmanagedAudioLanguage;
+            agg.HasAudioStreams           |= e.HasAudioStreams;
+            agg.HasMultipleVersions       |= e.HasMultipleVersions;
+            agg.IsFromVirtualLib          |= e.IsFromVirtualLib;
+        }
+
+        if (episodes.Count > 0)
+        {
+            var (icon, known, debug) = DetectOrigin(episodes[0], tmdbApiKey, logger);
+            agg.OriginalLanguageIcon  = icon;
+            agg.HasKnownOriginCountry = known;
+            agg.OriginDebugText       = debug;
+        }
+
+        _aggregateCache[folder.InternalId] = (DateTime.UtcNow, agg);
+        return agg;
     }
 
     // ── Favorites detection ──────────────────────────────────────────────────
@@ -386,6 +464,9 @@ public class MediaInfo
 
     /// <summary>True si au moins un utilisateur a marqué l'item comme favori.</summary>
     public bool IsFavorite { get; set; }
+
+    /// <summary>Note du média (CommunityRating, 0–10, arrondie à 1 décimale) ; null si absente.</summary>
+    public float? Rating { get; set; }
 
     /// <summary>Texte de debug : source et langue originale détectée (ex: "TMDB:ja icon=lang_japanese").</summary>
     public string? OriginDebugText { get; set; }

@@ -57,12 +57,15 @@ public class BadgeEnhancer : IImageEnhancer
         if (config is null || !config.EnableBadges)
             return false;
 
-        // Uniquement les posters et vignettes
-        if (imageType != ImageType.Primary && imageType != ImageType.Thumb)
+        // Films, épisodes, séries et saisons
+        if (item is not (Movie or Episode or Series or Season))
             return false;
 
-        // Films et épisodes uniquement
-        return item is Movie || item is Episode;
+        // Posters et vignettes ; fonds (Backdrop) uniquement pour épisodes/séries/saisons :
+        // l'accueil (« Continuer à regarder ») affiche le fond de la série pour ses épisodes.
+        return imageType == ImageType.Primary
+            || imageType == ImageType.Thumb
+            || (imageType == ImageType.Backdrop && item is not Movie);
     }
 
     /// <summary>
@@ -86,9 +89,10 @@ public class BadgeEnhancer : IImageEnhancer
             GC(config.Language),
             GC(config.MultiVersion),
             GC(config.Favorites),
+            GC(config.Rating),
             config.ShowSd, config.ShowHd, config.ShowFullHd, config.Show4K,
             config.ShowFrench, config.ShowEnglish, config.ShowJapanese, config.ShowVo, config.ShowMulti,
-            config.MultiVersionTrigger, config.ShowFavorites, config.HighlightOriginalLanguage,
+            config.MultiVersionTrigger, config.ShowFavorites, config.ShowRating, config.HighlightOriginalLanguage,
             !string.IsNullOrEmpty(config.TmdbApiKey),
             config.DebugMode,
             string.Join(",", mediaInfo.ResolutionIcons),
@@ -98,7 +102,8 @@ public class BadgeEnhancer : IImageEnhancer
             mediaInfo.HasUnmanagedAudioLanguage,
             string.Join(",", mediaInfo.VersionConnectors),
             mediaInfo.IsFromVirtualLib,
-            mediaInfo.IsFavorite
+            mediaInfo.IsFavorite,
+            mediaInfo.Rating
         );
     }
 

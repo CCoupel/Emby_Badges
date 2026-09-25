@@ -17,6 +17,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public GroupConfig Language     { get; set; } = new() { Position = BadgePosition.BottomLeft };
     public GroupConfig MultiVersion { get; set; } = new() { Position = BadgePosition.TopRight };
     public GroupConfig Favorites    { get; set; } = new() { Position = BadgePosition.BottomRight };
+    public GroupConfig Rating       { get; set; } = new() { Position = BadgePosition.TopLeft };
 
     /// <summary>Déclencheur du badge multi-version.</summary>
     public MultiVersionTrigger MultiVersionTrigger { get; set; } = MultiVersionTrigger.MultiVersionOnly;
@@ -34,6 +35,8 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool HighlightOriginalLanguage { get; set; } = true;
     public bool ShowMulti     { get; set; } = true;
     public bool ShowFavorites { get; set; } = true;
+    /// <summary>Affiche la note (CommunityRating, 0–10) du média.</summary>
+    public bool ShowRating    { get; set; } = true;
 }
 
 public class GroupConfig

@@ -32,8 +32,9 @@ define([], function () {
                 view.querySelector('#ShowMulti').checked     = !!cfg.ShowMulti;
       setSelect('MultiVersionTrigger', cfg.MultiVersionTrigger || 'MultiVersionOnly');
       view.querySelector('#ShowFavorites').checked = !!cfg.ShowFavorites;
+      view.querySelector('#ShowRating').checked = cfg.ShowRating !== false;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites'].forEach(function (g) {
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating'].forEach(function (g) {
                     var gc = cfg[g] || {};
                     setSelect(g + '_Position', gc.Position || 'BottomLeft');
                     view.querySelector('#' + g + '_SizePercent').value   = gc.SizePercent   != null ? gc.SizePercent   : 8;
@@ -61,8 +62,9 @@ define([], function () {
                 cfg.ShowMulti            = view.querySelector('#ShowMulti').checked;
       cfg.MultiVersionTrigger  = view.querySelector('#MultiVersionTrigger').value;
       cfg.ShowFavorites = view.querySelector('#ShowFavorites').checked;
+      cfg.ShowRating = view.querySelector('#ShowRating').checked;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites'].forEach(function (g) {
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating'].forEach(function (g) {
                     cfg[g] = {
                         Position:      view.querySelector('#' + g + '_Position').value,
                         SizePercent:   parseFloat(view.querySelector('#' + g + '_SizePercent').value),

@@ -15,6 +15,7 @@
         .eb-text-badge { display:inline-block; padding:2px 10px; border-radius:4px;
           background:rgba(30,100,180,0.8); color:#fff; font-weight:bold; font-size:0.9em; }
         .eb-multi { background:rgba(180,90,0,0.8); }
+        .eb-rating { background:rgba(170,130,0,0.8); }
         .eb-heart { display:inline-block; color:#dc1e3c; font-size:1.4em;
           line-height:1; vertical-align:middle; margin-right:2px; }
         .eb-toggle { display:inline-flex; align-items:center; gap:6px;
@@ -184,6 +185,40 @@
             <div class="inputContainer">
               <label class="inputLabel inputLabelUnfocused">Opacité (0–1)</label>
               <input type="number" id="Favorites_Opacity" min="0" max="1" step="0.05" class="emby-input" />
+            </div>
+          </div>
+      </div>
+
+      <!-- Note -->
+      <div class="detailSection">
+        <div class="detailSectionHeader">Note</div>
+        <div class="eb-toggles"><label class="eb-toggle"><input type="checkbox" id="ShowRating" /><span class="eb-text-badge eb-rating">7.8</span><span>Note du média (0–10)</span></label></div>
+        
+          <div class="eb-grid">
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused">Position</label>
+              <select id="Rating_Position" is="emby-select" class="emby-select-withcolor emby-input">
+                <option value="TopLeft">Haut gauche</option>
+                <option value="TopCenter">Haut centre</option>
+                <option value="TopRight">Haut droite</option>
+                <option value="CenterLeft">Centre gauche</option>
+                <option value="CenterRight">Centre droite</option>
+                <option value="BottomLeft">Bas gauche</option>
+                <option value="BottomCenter">Bas centre</option>
+                <option value="BottomRight">Bas droite</option>
+              </select>
+            </div>
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused">Taille (% image)</label>
+              <input type="number" id="Rating_SizePercent" min="1" max="30" step="0.5" class="emby-input" />
+            </div>
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused">Marge (% largeur)</label>
+              <input type="number" id="Rating_MarginPercent" min="0" max="15" step="0.5" class="emby-input" />
+            </div>
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused">Opacité (0–1)</label>
+              <input type="number" id="Rating_Opacity" min="0" max="1" step="0.05" class="emby-input" />
             </div>
           </div>
       </div>

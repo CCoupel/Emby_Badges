@@ -16,6 +16,7 @@ public class BadgeRenderer
     private static readonly SKColor ColorMulti    = new SKColor(180, 90,  0);
     private static readonly SKColor ColorVo       = new SKColor(30,  100, 180);
     private static readonly SKColor ColorFavorite = new SKColor(200, 30,  60);
+    private static readonly SKColor ColorRating   = new SKColor(170, 130, 0);
 
     public BadgeRenderer(ILogger logger) => _logger = logger;
 
@@ -100,6 +101,10 @@ public class BadgeRenderer
         // Favoris
         if (config.ShowFavorites && mediaInfo.IsFavorite)
             list.Add(new HeartBadge(ColorFavorite, config.Favorites));
+
+        // Note du média
+        if (config.ShowRating && mediaInfo.Rating is float rating)
+            list.Add(new TextBadge(rating.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture), ColorRating, config.Rating));
 
         return list;
     }
