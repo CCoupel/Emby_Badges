@@ -805,7 +805,12 @@ l'utilisateur de le personnaliser par environnement uniquement s'il le demande e
   "testing": {
     "backend": ["go-test"],
     "frontend": ["vitest"],
-    "e2e": ["playwright"]
+    "e2e": ["playwright"],
+    "components": { "<composant>": ["<glob des sources du composant>"] },
+    "regression_at_qa": "gated",
+    "full_regression_at": "qualif",
+    "coverage_min": 70,
+    "perf": { "p95_ms": 200, "p99_ms": 500, "error_rate_max": 0.001 }
   },
   "security": {
     "concerns": ["auth", "api-public"]
@@ -816,7 +821,16 @@ l'utilisateur de le personnaliser par environnement uniquement s'il le demande e
     "lint": "<LINT_CMD>",
     "audit": "<AUDIT_CMD>",
     "typecheck": "<TYPECHECK_CMD>",
-    "coverage": "<COVERAGE_CMD>"
+    "coverage": "<COVERAGE_CMD>",
+    "test_fast": "<TEST_FAST_CMD>",
+    "test_targeted": "<TEST_TARGETED_CMD avec {TARGETS}>",
+    "smoke": "<SMOKE_CMD optionnel>"
+  },
+  "docs": {
+    "mockup_dir": "docs/mockup"
+  },
+  "marketing": {
+    "site": "auto"
   },
   "agents": {
     "idle_ttl_minutes": 15,
@@ -838,6 +852,15 @@ Valeurs a deriver si elles ne sont pas fournies explicitement :
 | `commands.audit` | Stack : `govulncheck ./...` / `npm audit` / `pip-audit` |
 | `commands.typecheck` | Frontend TS : `npm run typecheck` / `tsc --noEmit` — vide sinon |
 | `commands.coverage` | Stack : `go test -cover ./...` / `npm run test -- --coverage` / `pytest --cov` |
+| `marketing.site` | Defaut `"auto"` : un site marketing est attendu (`gh-pages` ou `MARKETING/`) ; s'il n'existe pas, l'agent marketing declenche une initialisation (questions de cadrage + maquette). `false` = ordre direct de ne pas avoir de site (le CDP dispatche `PREPARE ... — SANS SITE`) |
+| `docs.mockup_dir` | Defaut `docs/mockup` (dossier des maquettes validees — voir `context/COMMON.md` §14) |
+| `commands.test_fast` | Boucle DEV : tests hors tag `slow`. Stack : `go test -short ./...` / `npx vitest run --exclude "**/*.slow.*"` / `pytest -m "not slow"` — vide sinon (les dev-* retombent sur `commands.test_targeted`) |
+| `commands.test_targeted` | Tests d'un sous-ensemble, `{TARGETS}` = fichiers ou dossiers. Stack : `go test {TARGETS}` / `npx vitest run {TARGETS}` / `pytest {TARGETS}` |
+| `commands.smoke` | Optionnel : tests tagues `smoke` (verification post-deploy). Absent → `curl /health` |
+| `testing.components` | Composant → globs de sources (ex. `"http_server": ["server-go/internal/server/**"]`) — sert a selectionner les NR impactees (`context/COMMON.md` 15.3). Derive de l'arborescence detectee (Etape 0) ; a defaut, un composant par dossier de premier niveau de `src_dir` |
+| `testing.regression_at_qa` | Defaut `gated` (`gated` \| `parallel` \| `none`) — `context/COMMON.md` 15.3 |
+| `testing.full_regression_at` | Defaut `qualif` (`qualif` \| `build` \| `prod`) — `context/COMMON.md` 15.4 |
+| `testing.coverage_min` | Defaut `70` (seuil minimal de couverture, en %) |
 | `src_dir` | Detection Etape 0 (repertoire source principal) ou stack par defaut : `src`, `cmd`... |
 | `version_file` | Fichier source de verite de la version (ex: `package.json`, `config.json`, `VERSION`) |
 | `infrastructure.environments` | Defaut `[QUALIF, PROD]` (Etape 8, question 9bis) ; `publish.mode` = `promote` pour tous sauf le dernier (`rebuild-ci`) ; `deploy.mechanism` reprend la reponse a la question 9 pour chaque environnement, sauf personnalisation explicite |
@@ -1108,6 +1131,73 @@ echo "✓ CLAUDE.md généré"
 # .gitignore projet
 cp TEMPLATE_claude/gitignore-for-projects .gitignore
 ```
+
+#### Dossier des maquettes
+
+Creer le squelette du dossier des maquettes (idempotent — ne jamais ecraser un fichier existant ;
+egalement execute a la reinitialisation d'un projet existant qui n'a pas encore `docs.mockup_dir`
+ni `INDEX.md`) :
+
+```bash
+MOCKUP_DIR=$(jq -r '.docs.mockup_dir // "docs/mockup"' .claude/project-config.json)
+mkdir -p "$MOCKUP_DIR"
+
+[ -f "$MOCKUP_DIR/INDEX.md" ] || cat > "$MOCKUP_DIR/INDEX.md" <<'INDEX_EOF'
+# Index des maquettes
+
+> Tenu exclusivement par le CDP — convention : `context/COMMON.md` section 14.
+
+## Actives
+| Composant | Feature | Fichier | Version | Relation |
+|-----------|---------|---------|---------|----------|
+
+## Obsolètes
+| Fichier | Remplacée par | Version |
+|---------|---------------|---------|
+INDEX_EOF
+
+[ -f "$MOCKUP_DIR/DECISIONS.md" ] || cat > "$MOCKUP_DIR/DECISIONS.md" <<'DECISIONS_EOF'
+# Contraintes de conception
+
+> Contraintes durables issues des refus/corrections de l'utilisateur, par composant.
+> Le planner les respecte, QA les vérifie. Tenu par le CDP.
+DECISIONS_EOF
+```
+
+Si `docs.mockup_dir` est absent de `project-config.json` (projet existant), l'ajouter avec la valeur par defaut
+(migration additive, sans autre modification du fichier).
+
+#### Index des tests
+
+Creer `tests/INDEX.md` et `tests/METRICS.md` (idempotent — ne jamais ecraser un fichier existant ;
+egalement execute a la reinitialisation d'un projet existant) :
+
+```bash
+mkdir -p tests
+
+[ -f tests/INDEX.md ] || cat > tests/INDEX.md <<'TESTS_INDEX_EOF'
+# Index des tests
+
+> Tests de specification ecrits par le test-writer ; statuts tenus par le CDP.
+> Convention : `context/COMMON.md` section 15. Statuts : `feature` | `regression` | `quarantaine`.
+> Tags : `smoke`, `critical`, `slow`.
+
+| Fichier | Niveau | Composant | Feature | Statut | Tags |
+|---------|--------|-----------|---------|--------|------|
+TESTS_INDEX_EOF
+
+[ -f tests/METRICS.md ] || cat > tests/METRICS.md <<'TESTS_METRICS_EOF'
+# Metriques de tests
+
+> Une ligne par verdict QA (tenu par le CDP) — sert a mesurer le taux de retours dus a la regression.
+
+| Date | Milestone | Feature | Cycle | Verdict | feature | regression | quarantaine | environnement | flaky |
+|------|-----------|---------|-------|---------|---------|------------|-------------|---------------|-------|
+TESTS_METRICS_EOF
+```
+
+Si `testing.regression_at_qa`, `testing.full_regression_at` ou `testing.coverage_min` sont absents de
+`project-config.json` (projet existant), les ajouter avec leurs valeurs par defaut (migration additive).
 
 #### Labels GitHub de suivi de phase
 
