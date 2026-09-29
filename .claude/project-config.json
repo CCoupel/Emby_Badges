@@ -10,11 +10,16 @@
   "src_dir": "src/EmbyBadges",
   "version_file": "src/EmbyBadges/EmbyBadges.csproj",
   "stack": {
-    "backend": { "language": "csharp", "framework": ".NET 6" },
+    "backend": {
+      "language": "csharp",
+      "framework": ".NET 6"
+    },
     "frontend": null,
     "mobile": null,
     "firmware": null,
-    "plugin": { "platform": "Emby Media Server plugin" },
+    "plugin": {
+      "platform": "Emby Media Server plugin"
+    },
     "database": null
   },
   "infrastructure": {
@@ -23,19 +28,44 @@
       {
         "name": "QUALIF",
         "order": 1,
-        "publish": { "mode": "promote", "target": "build/qualif_v{X.Y.Z}/" },
-        "deploy":  { "mechanism": "kubernetes", "target": "deployment/emby2 (namespace media)" }
+        "publish": {
+          "mode": "promote",
+          "target": "build/qualif_v{X.Y.Z}/"
+        },
+        "deploy": {
+          "mechanism": "kubernetes",
+          "target": "deployment/emby2 (namespace media)"
+        }
       },
       {
         "name": "PROD",
         "order": 2,
-        "publish": { "mode": "rebuild-ci", "trigger": "git-tag", "pipeline": ".github/workflows/release.yml" },
-        "deploy":  { "mechanism": "kubernetes", "target": "deployment/emby (namespace media)" }
+        "publish": {
+          "mode": "rebuild-ci",
+          "trigger": "git-tag",
+          "pipeline": ".github/workflows/release.yml"
+        },
+        "deploy": {
+          "mechanism": "kubernetes",
+          "target": "deployment/emby (namespace media)"
+        }
       }
     ]
   },
-  "testing": { "backend": [], "frontend": [], "e2e": [] },
-  "security": { "concerns": ["api-keys"] },
+  "testing": {
+    "backend": [],
+    "frontend": [],
+    "e2e": [],
+    "regression_at_qa": "gated",
+    "full_regression_at": "qualif",
+    "coverage_min": 70,
+    "lot_max_tests": 50
+  },
+  "security": {
+    "concerns": [
+      "api-keys"
+    ]
+  },
   "commands": {
     "build": "python gen_config_page.py && \"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe\" build src/EmbyBadges/EmbyBadges.csproj --configuration Release --output dist/",
     "test": "",
@@ -44,5 +74,18 @@
     "typecheck": "",
     "coverage": ""
   },
-  "agents": { "idle_ttl_minutes": 15, "idle_warning_interval_minutes": 5 }
+  "agents": {
+    "idle_ttl_minutes": 15,
+    "idle_warning_interval_minutes": 5
+  },
+  "template_version": {
+    "tag": "v3.8.0",
+    "commit": "8c49482ee38f9172edbb99bbf7aa4bdc56e5c5bf"
+  },
+  "docs": {
+    "mockup_dir": "docs/mockup"
+  },
+  "marketing": {
+    "site": "auto"
+  }
 }
