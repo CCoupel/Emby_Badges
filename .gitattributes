@@ -1,0 +1,8 @@
+# Fins de ligne normalisees en LF dans le depot et a l'extraction
+*.yml   text eol=lf
+*.cs    text eol=lf
+*.csproj text eol=lf
+*.sln   text eol=lf
+*.py    text eol=lf
+*.md   text eol=lf
+*.json text eol=lf
