@@ -46,3 +46,4 @@ TEMPLATE_claude/
 _work/
 build/
 !.claude/commands/init-project.md
+MARKETING/
