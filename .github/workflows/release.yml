@@ -19,10 +19,31 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Check tag matches csproj version
+        env:
+          TAG_VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          csproj=src/EmbyBadges/EmbyBadges.csproj
+          raw=$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' "$csproj" | head -n1 | tr -d '\r[:space:]')
+          if ! [[ "$raw" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)(\.[0-9]+)?$ ]]; then
+            echo "::error file=$csproj::Version '$raw' illisible (attendu X.Y.Z ou X.Y.Z.a)"
+            exit 1
+          fi
+          # Format historique X.Y.Z ou format deploy X.Y.Z.a : seuls les 3 premiers champs comptent
+          csproj_version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          if [ "$csproj_version" != "$TAG_VERSION" ]; then
+            echo "::error file=$csproj::Le tag v$TAG_VERSION ne correspond pas a <Version> du csproj ($raw). Bumper le csproj avant de tagger."
+            exit 1
+          fi
+          echo "Version coherente : tag v$TAG_VERSION = csproj $raw"
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '6.0.x'
+
+      - name: Generate config page
+        run: python3 gen_config_page.py
 
       - name: Build
         run: |
