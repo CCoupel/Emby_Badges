@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="current-major" content="1">
+<title>Emby Badges</title>
+<meta name="description" content="Plugin Emby : badges de résolution, langue, versions et favoris sur vos affiches.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;600;800&display=swap">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div class="brand">Emby Badges <span class="ver">v1.2.0</span></div>
+  <nav>
+    <a href="#problems" data-i18n="nav.problems">Le souci</a>
+    <a href="#solutions" data-i18n="nav.solutions">Les badges</a>
+    <a href="#architecture" data-i18n="nav.arch">Sous le capot</a>
+    <a href="#deployment" data-i18n="nav.deploy">Installer</a>
+    <div class="lang-switcher">
+      <button class="lang-btn active" data-lang="fr">FR</button><span>|</span><button class="lang-btn" data-lang="en">EN</button>
+    </div>
+  </nav>
+</header>
+
+<main>
+<div class="hero">
+  <div>
+    <h1 data-i18n="hero.title">Vos affiches savent tout dire</h1>
+    <p data-i18n="hero.sub">Emby Badges colle sur chaque vignette de petits badges : résolution, langue audio, versions multiples, favoris, note. Un coup d'œil, et vous savez quoi lancer ce soir.</p>
+    <div class="cta">
+      <a class="btn" href="https://github.com/CCoupel/Emby_Badges/releases" data-i18n="hero.cta">Télécharger le plugin</a>
+      <a class="btn alt" href="#solutions" data-i18n="hero.cta2">Voir les badges</a>
+    </div>
+  </div>
+</div>
+
+<figure class="banner"><img src="assets/hero-affiches.webp" width="1100" height="347" alt="Affiches Emby avec badges de résolution, langue, versions et note" fetchpriority="high"></figure>
+
+<section id="problems">
+  <h2 data-i18n="prob.title">Quel film, quelle qualité, quelle langue ?</h2>
+  <div class="grid">
+    <div class="card"><h3 data-i18n="prob.1.t">Le jeu de piste des versions</h3><p data-i18n="prob.1.p"></p></div>
+    <div class="card"><h3 data-i18n="prob.2.t">Doublé ou pas doublé</h3><p data-i18n="prob.2.p"></p></div>
+    <div class="card"><h3 data-i18n="prob.3.t">Une bibliothèque qui déborde</h3><p data-i18n="prob.3.p"></p></div>
+  </div>
+</section>
+
+<section id="solutions">
+  <h2 data-i18n="sol.title">Tout est écrit sur l'affiche</h2>
+  <div class="grid sol">
+    <div class="card"><span class="chip">4K · 1080p · HD · SD</span><h3 data-i18n="sol.res.t">Résolution</h3><p data-i18n="sol.res.p"></p></div>
+    <div class="card"><span class="chip">FR · EN · JP · VO</span><h3 data-i18n="sol.lang.t">Langue audio</h3><p data-i18n="sol.lang.p"></p></div>
+    <div class="card"><span class="chip">MULTI</span><h3 data-i18n="sol.multi.t">Versions multiples</h3><p data-i18n="sol.multi.p"></p></div>
+    <div class="card"><span class="chip">♥</span><h3 data-i18n="sol.fav.t">Favoris</h3><p data-i18n="sol.fav.p"></p></div>
+    <div class="card"><span class="chip">8 positions</span><h3 data-i18n="sol.cfg.t">Tout se règle</h3><p data-i18n="sol.cfg.p"></p></div>
+  </div>
+  <div class="grid news" style="margin-top:20px">
+    <div class="card"><h3 data-i18n="sol.film.t">Films : tout est sur l'affiche</h3><p data-i18n="sol.film.p"></p><img class="shot" src="assets/film-badges.webp" width="1239" height="519" loading="lazy" alt="Affiche de film avec ses badges : 1080p, français, anglais et note 8.1"></div>
+    <div class="card"><h3 data-i18n="sol.series.t">Séries : pareil, en cumulé</h3><p data-i18n="sol.series.p"></p><img class="shot" src="assets/series-badges.webp" width="1000" height="727" loading="lazy" alt="Série avec ses saisons et épisodes badgés"></div>
+  </div>
+  <img class="shot" src="assets/config-page.webp" width="1400" height="726" loading="lazy" alt="Page de configuration du plugin : sections Résolution et Langue audio">
+
+  <h2 style="margin-top:48px" data-i18n="new.title">Quoi de neuf dans la 1.2.0</h2>
+  <div class="grid news n">
+    <div class="card"><h3><span data-i18n="new.rating.t">La note, en un badge</span><span class="badge" data-badge-version="v1.2.0"></span></h3><p data-i18n="new.rating.p"></p><img class="shot narrow" src="assets/rating-badge.webp" width="360" height="520" loading="lazy" alt="Affiche avec la note 7.9"></div>
+    <div class="card"><h3><span data-i18n="new.series.t">Séries et saisons aussi</span><span class="badge" data-badge-version="v1.2.0"></span></h3><p data-i18n="new.series.p"></p><img class="shot" src="assets/series-episodes.webp" width="1267" height="208" loading="lazy" alt="Vignettes d'épisodes de série avec badges 1080, français, japonais et note"></div>
+    <div class="card wide"><h3><span data-i18n="new.backdrop.t">Vignettes paysage badgées</span><span class="badge" data-badge-version="v1.2.0"></span></h3><p data-i18n="new.backdrop.p"></p><img class="shot" src="assets/backdrop-badges.webp" width="1410" height="218" loading="lazy" alt="Vignettes paysage d'épisodes avec badges dans Reprendre la lecture"></div>
+  </div>
+</section>
+
+<section id="architecture">
+  <h2 data-i18n="arch.title">Sous le capot</h2>
+  <p data-i18n="arch.intro"></p>
+  <div class="arch">
+    <div class="node"><b data-i18n="arch.1">Votre média</b><span data-i18n="arch.1s"></span></div><div class="arrow">→</div>
+    <div class="node"><b data-i18n="arch.2">Extraction</b><span data-i18n="arch.2s"></span></div><div class="arrow">→</div>
+    <div class="node"><b data-i18n="arch.3">Rendu</b><span data-i18n="arch.3s"></span></div><div class="arrow">→</div>
+    <div class="node"><b data-i18n="arch.4">Emby</b><span data-i18n="arch.4s"></span></div>
+  </div>
+  <p data-i18n="arch.stack"></p>
+</section>
+
+<section id="deployment">
+  <h2 data-i18n="dep.title">Installer</h2>
+  <div class="grid">
+    <div class="card"><h3 data-i18n="dep.bin">Depuis les releases</h3><p data-i18n="dep.bin.p"></p><p><a href="https://github.com/CCoupel/Emby_Badges/releases">github.com/CCoupel/Emby_Badges/releases</a></p></div>
+    <div class="card"><h3 data-i18n="dep.cfg">Configuration</h3><p data-i18n="dep.cfg.p"></p></div>
+  </div>
+  <details><summary data-i18n="dep.src">Depuis les sources</summary>
+<pre>git clone https://github.com/CCoupel/Emby_Badges.git
+cd Emby_Badges
+python gen_config_page.py
+dotnet build src/EmbyBadges/EmbyBadges.csproj --configuration Release --output dist/
+# copier dist/EmbyBadges.dll dans plugins/ (racine) puis redémarrer Emby</pre></details>
+</section>
+</main>
+<footer><span data-i18n="foot">Projet open source, fait pour les gens qui aiment leur médiathèque. Version</span> v1.2.0 · <a href="https://github.com/CCoupel/Emby_Badges">GitHub</a></footer>
+</div>
+<script src="assets/badges.js"></script>
+<script src="assets/lang.js"></script>
+</body>
+</html>
