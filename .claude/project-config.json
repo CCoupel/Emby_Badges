@@ -79,8 +79,8 @@
     "idle_warning_interval_minutes": 5
   },
   "template_version": {
-    "tag": "v3.9.1",
-    "commit": "dc3d230f01188ea698f3eab3e7805cbaca9b0260"
+    "tag": "v3.13.1",
+    "commit": "b1a3b8e41b4dd3a551917e1ce6c99e1bd6957655"
   },
   "docs": {
     "mockup_dir": "docs/mockup"
