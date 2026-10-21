@@ -1,6 +1,13 @@
 # Release v1.3.0 - Vos affiches indiquent où en est la synchronisation
 
 **Date** : à définir à la publication
+**Version de développement** : 1.3.0 (le numéro de build QUALIF est rapporté par le déploiement)
+
+## Qualité avant publication
+
+- **Revue de code** : approuvée (rapport `_work/reports/code-reviewer-20261021-221500.md`), après correctifs des observations M1 (reconstruction de l'index en arrière-plan) et M3 (libération des formes arrondies).
+- **Tests unitaires** : 61/61 réussis (`_work/reports/qa-20261021-220000.md`).
+- **QA étape 1 (hors serveur)** : validée. La validation sur QUALIF (rendu réel, playlists PlaySync, latence) reste à faire.
 
 ## Nouveautés
 

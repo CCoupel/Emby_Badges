@@ -10,6 +10,7 @@ Plugin Emby Media Server qui superpose des badges visuels sur les vignettes de l
 | Langue audio | Français, Anglais, VO (langue inconnue) |
 | Versions multiples | Initiale du connecteur VirtualLib ou "MULTI" |
 | Favoris | Icône cœur (si l'item est en favori) |
+| Note | Note communautaire (depuis v1.2.0) |
 | Synchro (PlaySync) | `P` position, `L` lu, `S` supprimé — en lettres, ou pictogramme coloré (voir ci-dessous) |
 
 Chaque groupe dispose de paramètres indépendants : position, taille, marge, opacité. Les badges individuels dans un groupe peuvent être activés/désactivés séparément.

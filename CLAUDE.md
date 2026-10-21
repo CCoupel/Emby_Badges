@@ -10,9 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Audio language**: French, English, VO (audio present but unknown language)
 - **Multi-version / VirtualLib**: connector initial letter (or "MULTI"), with configurable trigger
 - **Favorites**: heart icon when the item is marked as favorite by the first user
+- **Rating (Note)**: community rating shown on the poster (since v1.2.0)
 - **Synchro (PlaySync)**: sync state of the item in shared playlists tagged for PlaySync — `P` (position), `L` (read), `S` (removed), as letters or as a coloured sync pictogram (see « PlaySync integration »)
 
-Each badge group (Resolution, Language, MultiVersion, Favorites, Synchro) has independent position, size, margin, and opacity settings. Individual badges within a group share those settings but can be individually enabled/disabled.
+Each badge group (Resolution, Language, MultiVersion, Favorites, Rating, Synchro) has independent position, size, margin, and opacity settings. Individual badges within a group share those settings but can be individually enabled/disabled.
 
 ## Technology Stack
 
