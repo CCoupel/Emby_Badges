@@ -33,3 +33,50 @@ public class ColorOfTests
     [Fact] public void ReadSeul_Orange() => Assert.Equal(Orange, BadgeRenderer.ColorOf(SyncTypes.Read));
     [Fact] public void PositionSeul_Vert() => Assert.Equal(Vert, BadgeRenderer.ColorOf(SyncTypes.Position));
 }
+
+/// <summary>BadgeRenderer.SyncShown : types détectés ∩ types activés (contracts/models.md §3, CA7).</summary>
+public class SyncShownTests
+{
+    private const SyncTypes All = SyncTypes.Position | SyncTypes.Read | SyncTypes.Removed;
+
+    [Fact]
+    public void TousActives_RetourneLesTypesDetectes()
+        => Assert.Equal(All, BadgeRenderer.SyncShown(All, new PluginConfiguration()));
+
+    [Fact]
+    public void PositionDesactive_EstRetire()
+        => Assert.Equal(SyncTypes.Read | SyncTypes.Removed,
+            BadgeRenderer.SyncShown(All, new PluginConfiguration { ShowSyncPosition = false }));
+
+    [Fact]
+    public void ToutDesactive_DonneNone()
+        => Assert.Equal(SyncTypes.None, BadgeRenderer.SyncShown(All,
+            new PluginConfiguration { ShowSyncPosition = false, ShowSyncRead = false, ShowSyncRemoved = false }));
+
+    [Fact]
+    public void TypeNonDetecte_NEstPasAjoute()
+        => Assert.Equal(SyncTypes.Read, BadgeRenderer.SyncShown(SyncTypes.Read, new PluginConfiguration()));
+
+    [Fact]
+    public void AucunDetecte_DonneNone()
+        => Assert.Equal(SyncTypes.None, BadgeRenderer.SyncShown(SyncTypes.None, new PluginConfiguration()));
+}
+
+public class SyncConfigDefaultsTests
+{
+    [Fact]
+    public void ValeursParDefaut_ConformesAuContrat()
+    {
+        var c = new PluginConfiguration();
+        Assert.True(c.ShowSync);
+        Assert.Equal(SyncRenderMode.Letters, c.SyncRenderMode);
+        Assert.True(c.ShowSyncPosition);
+        Assert.True(c.ShowSyncRead);
+        Assert.True(c.ShowSyncRemoved);
+        Assert.Equal(BadgePosition.TopLeft, c.Sync.Position);
+    }
+
+    [Fact]
+    public void TtlIndex_5Minutes()
+        => Assert.Equal(TimeSpan.FromMinutes(5), EmbyBadges.Enhancer.SyncDetector.SyncIndexTtl);
+}
