@@ -68,7 +68,7 @@
   },
   "commands": {
     "build": "python gen_config_page.py && \"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe\" build src/EmbyBadges/EmbyBadges.csproj --configuration Release --output dist/",
-    "test": "",
+    "test": "/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe test tests/EmbyBadges.Tests/",
     "lint": "",
     "audit": "",
     "typecheck": "",
