@@ -16,6 +16,7 @@
           background:rgba(30,100,180,0.8); color:#fff; font-weight:bold; font-size:0.9em; }
         .eb-multi { background:rgba(180,90,0,0.8); }
         .eb-rating { background:rgba(170,130,0,0.8); }
+        .eb-sync { background:rgba(0,120,140,0.8); }
         .eb-heart { display:inline-block; color:#dc1e3c; font-size:1.4em;
           line-height:1; vertical-align:middle; margin-right:2px; }
         .eb-toggle { display:inline-flex; align-items:center; gap:6px;
@@ -219,6 +220,40 @@
             <div class="inputContainer">
               <label class="inputLabel inputLabelUnfocused">Opacité (0–1)</label>
               <input type="number" id="Rating_Opacity" min="0" max="1" step="0.05" class="emby-input" />
+            </div>
+          </div>
+      </div>
+
+      <!-- Synchro (PlaySync) -->
+      <div class="detailSection">
+        <div class="detailSectionHeader">Synchro (PlaySync)</div>
+        <div class="eb-toggles"><label class="eb-toggle"><input type="checkbox" id="ShowSync" /><span class="eb-text-badge eb-sync">PLS</span><span>Activer le badge (média dans une playlist partagée PlaySync)</span></label><label class="eb-toggle"><input type="checkbox" id="ShowSyncPosition" /><span class="eb-text-badge eb-sync">P</span><span>Position (propager-avancement)</span></label><label class="eb-toggle"><input type="checkbox" id="ShowSyncRead" /><span class="eb-text-badge eb-sync">L</span><span>Lu (propager-lu)</span></label><label class="eb-toggle"><input type="checkbox" id="ShowSyncRemoved" /><span class="eb-text-badge eb-sync">S</span><span>Supprimé (remove-si-lu, avec propager-lu)</span></label><div class="inputContainer" style="margin-top:8px;width:100%"><label class="inputLabel inputLabelUnfocused">Mode de rendu</label><select id="SyncRenderMode" is="emby-select" class="emby-select-withcolor emby-input"><option value="Letters">Lettres (P / L / S)</option><option value="Color">Pictogramme coloré (rouge = supprimé, orange = lu, vert = position)</option></select><div class="fieldDescription">Lettres : un badge sarcelle listant les types actifs. Pictogramme : couleur du type le plus fort.</div></div></div>
+        
+          <div class="eb-grid">
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused">Position</label>
+              <select id="Sync_Position" is="emby-select" class="emby-select-withcolor emby-input">
+                <option value="TopLeft">Haut gauche</option>
+                <option value="TopCenter">Haut centre</option>
+                <option value="TopRight">Haut droite</option>
+                <option value="CenterLeft">Centre gauche</option>
+                <option value="CenterRight">Centre droite</option>
+                <option value="BottomLeft">Bas gauche</option>
+                <option value="BottomCenter">Bas centre</option>
+                <option value="BottomRight">Bas droite</option>
+              </select>
+            </div>
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused">Taille (% image)</label>
+              <input type="number" id="Sync_SizePercent" min="1" max="30" step="0.5" class="emby-input" />
+            </div>
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused">Marge (% largeur)</label>
+              <input type="number" id="Sync_MarginPercent" min="0" max="15" step="0.5" class="emby-input" />
+            </div>
+            <div class="inputContainer">
+              <label class="inputLabel inputLabelUnfocused">Opacité (0–1)</label>
+              <input type="number" id="Sync_Opacity" min="0" max="1" step="0.05" class="emby-input" />
             </div>
           </div>
       </div>

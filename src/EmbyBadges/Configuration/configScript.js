@@ -33,8 +33,13 @@ define([], function () {
       setSelect('MultiVersionTrigger', cfg.MultiVersionTrigger || 'MultiVersionOnly');
       view.querySelector('#ShowFavorites').checked = !!cfg.ShowFavorites;
       view.querySelector('#ShowRating').checked = cfg.ShowRating !== false;
+      view.querySelector('#ShowSync').checked = cfg.ShowSync !== false;
+      view.querySelector('#ShowSyncPosition').checked = cfg.ShowSyncPosition !== false;
+      view.querySelector('#ShowSyncRead').checked = cfg.ShowSyncRead !== false;
+      view.querySelector('#ShowSyncRemoved').checked = cfg.ShowSyncRemoved !== false;
+      setSelect('SyncRenderMode', cfg.SyncRenderMode || 'Letters');
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating'].forEach(function (g) {
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync'].forEach(function (g) {
                     var gc = cfg[g] || {};
                     setSelect(g + '_Position', gc.Position || 'BottomLeft');
                     view.querySelector('#' + g + '_SizePercent').value   = gc.SizePercent   != null ? gc.SizePercent   : 8;
@@ -63,8 +68,13 @@ define([], function () {
       cfg.MultiVersionTrigger  = view.querySelector('#MultiVersionTrigger').value;
       cfg.ShowFavorites = view.querySelector('#ShowFavorites').checked;
       cfg.ShowRating = view.querySelector('#ShowRating').checked;
+      cfg.ShowSync = view.querySelector('#ShowSync').checked;
+      cfg.ShowSyncPosition = view.querySelector('#ShowSyncPosition').checked;
+      cfg.ShowSyncRead = view.querySelector('#ShowSyncRead').checked;
+      cfg.ShowSyncRemoved = view.querySelector('#ShowSyncRemoved').checked;
+      cfg.SyncRenderMode = view.querySelector('#SyncRenderMode').value;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating'].forEach(function (g) {
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync'].forEach(function (g) {
                     cfg[g] = {
                         Position:      view.querySelector('#' + g + '_Position').value,
                         SizePercent:   parseFloat(view.querySelector('#' + g + '_SizePercent').value),
