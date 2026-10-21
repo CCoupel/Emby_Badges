@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
+using System.Threading.Tasks;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
@@ -49,6 +50,7 @@ public class SyncDetector
     private readonly ILogger _logger;
 
     private readonly object _buildLock = new();
+    private int _rebuilding;
     private volatile Snapshot _snapshot = new(DateTime.MinValue, new Dictionary<long, SyncTypes>());
 
     private sealed record Snapshot(DateTime At, Dictionary<long, SyncTypes> Map);
@@ -119,18 +121,30 @@ public class SyncDetector
         var snap = _snapshot;
         if (DateTime.UtcNow - snap.At >= SyncIndexTtl)
         {
-            if (System.Threading.Monitor.TryEnter(_buildLock))
+            if (snap.At == DateTime.MinValue)
             {
-                try
+                // Tout premier build : bloquant (un seul thread ; les autres servent l'index vide).
+                if (System.Threading.Monitor.TryEnter(_buildLock))
                 {
-                    // double vérification : un autre thread a pu reconstruire entre-temps
-                    snap = _snapshot;
-                    if (DateTime.UtcNow - snap.At >= SyncIndexTtl)
-                        snap = Rebuild(snap);
+                    try
+                    {
+                        snap = _snapshot;
+                        if (snap.At == DateTime.MinValue) snap = Rebuild(snap);
+                    }
+                    finally { System.Threading.Monitor.Exit(_buildLock); }
                 }
-                finally { System.Threading.Monitor.Exit(_buildLock); }
             }
-            // sinon : reconstruction en cours ailleurs → on sert l'ancien instantané
+            else if (Interlocked.CompareExchange(ref _rebuilding, 1, 0) == 0)
+            {
+                // TTL expiré : on sert l'ancien instantané et on reconstruit en tâche de fond.
+                var previous = snap;
+                Task.Run(() =>
+                {
+                    try { Rebuild(previous); }
+                    catch (Exception ex) { _logger.Warn("SyncIndex : reconstruction en arrière-plan en échec ({0})", ex.Message); }
+                    finally { Interlocked.Exchange(ref _rebuilding, 0); }
+                });
+            }
         }
         return snap.Map.TryGetValue(internalId, out var t) ? t : SyncTypes.None;
     }

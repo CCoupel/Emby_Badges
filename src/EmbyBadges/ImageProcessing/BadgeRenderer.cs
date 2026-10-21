@@ -289,7 +289,7 @@ public class BadgeRenderer
         public override void Draw(SKCanvas canvas, float x, float y, int h, float opacity)
         {
             float w = Width(h);
-            var rrect = new SKRoundRect(new SKRect(x, y, x + w, y + h), h * 0.2f);
+            using var rrect = new SKRoundRect(new SKRect(x, y, x + w, y + h), h * 0.2f);
 
             using var bgPaint = new SKPaint
             {
@@ -393,7 +393,7 @@ public class BadgeRenderer
 
         public override void Draw(SKCanvas canvas, float x, float y, int h, float opacity)
         {
-            var rrect = new SKRoundRect(new SKRect(x, y, x + h, y + h), h * 0.2f);
+            using var rrect = new SKRoundRect(new SKRect(x, y, x + h, y + h), h * 0.2f);
             using var bg = new SKPaint { Color = _color.WithAlpha((byte)(opacity * 210)), IsAntialias = true };
             canvas.DrawRoundRect(rrect, bg);
 
