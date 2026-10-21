@@ -39,8 +39,10 @@ Règles :
   `Removed` si `remove-si-lu` active **et** `propager-lu` active (état *effectif* : PlaySync ≥ 1.2.0 rend le
   retrait inerte sans `propager-lu`) — hypothèse H3, à valider au GATE 2 (alternative : état brut de l'étiquette).
 - **Par média** : union (`|`) des `SyncTypes` de toutes les playlists partagées qui le contiennent.
-- **Série / saison** : union des `SyncTypes` de la série/saison elle-même et de tous ses épisodes (même agrégation
-  que résolution/langues dans `AggregateEpisodes`).
+- **Série / saison** : un épisode **propage** ses types à sa saison et à sa série (fait dans l'index `SyncDetector`,
+  pas dans `AggregateEpisodes`) ; le `SyncTypes` d'une saison/série = union des propagations de ses épisodes et de ses
+  propres playlists. **Seule la propagation épisode → saison → série est faite** : une saison ou une série placée
+  directement dans une playlist n'est pas propagée à son parent (limitation connue).
 - `MediaInfo.SyncTypes` (nouveau champ, défaut `None`).
 
 ### 3. Configuration (`PluginConfiguration`)
@@ -79,14 +81,22 @@ Ajouts à la clé existante (même `string.Join("_", …)`) :
 `GC(config.Sync)`, `config.ShowSync`, `config.SyncRenderMode`, `config.ShowSyncPosition`, `config.ShowSyncRead`,
 `config.ShowSyncRemoved`, `(int)mediaInfo.SyncTypes`.
 
-### 6. Index de synchro en mémoire (`SyncIndex`)
+### 6. Index de synchro en mémoire (`SyncDetector`)
 
-- Instantané `IReadOnlyDictionary<long /*InternalId*/, SyncTypes>` construit en **une passe** sur toutes les
-  playlists partagées ayant ≥ 1 famille active ; TTL **5 min** (`SyncIndexTtl`), reconstruit paresseusement
-  au premier appel après expiration (verrou de reconstruction : une seule reconstruction à la fois, les autres
-  appels servent l'ancien instantané).
+- Instantané `Dictionary<long /*InternalId*/, SyncTypes>` construit en **une passe** sur toutes les playlists
+  partagées ayant ≥ 1 famille active ; TTL **5 min** (`SyncIndexTtl`).
+- **Premier build** : bloquant sur le thread appelant (les autres appels concurrents voient un index vide pendant ce temps).
+- **Reconstructions suivantes** (TTL expiré) : l'**ancien instantané est servi** ; la reconstruction tourne en
+  **tâche de fond** (`Task.Run`), en *single flight* (`Interlocked.CompareExchange` sur un drapeau : une seule
+  reconstruction à la fois, les autres appels se contentent de l'ancien instantané).
+- **Échec de reconstruction** : log `Warn`, l'ancien index est **conservé** (jamais d'index partiel, jamais d'exception
+  remontée au rendu).
+- Lecture des enfants d'une playlist, dans l'ordre, arrêt au premier résultat non vide : (1) chaque utilisateur ayant
+  accès à la playlist, par niveau de partage décroissant (propriétaire d'abord), via `GetChildren(new InternalItemsQuery(user))` ;
+  (2) lecture sans utilisateur ; (3) repli `GetItemList(ListIds = [playlist])`.
 - Coût par calcul de clé de cache : une recherche `O(1)`. Coût par reconstruction : 1 requête playlists +
   1 requête partages (batch) + 1 lecture d'enfants par playlist synchronisée.
+- `ShowSync = false` : `GetSyncTypes` renvoie `None` avant tout appel, l'index n'est jamais construit.
 - Conséquence : un changement d'appartenance / d'étiquette est visible au plus **5 min** après (puis cache images
   Emby : clé changée → `enhanced-images` régénéré ; `resized-images` reste soumis à la limitation connue).
 - PlaySync absent ou aucune playlist étiquetée : index vide, `SyncTypes.None` partout, aucun badge.
