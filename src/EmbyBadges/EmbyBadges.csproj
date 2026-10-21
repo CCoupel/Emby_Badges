@@ -32,6 +32,10 @@
     <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.6" Condition="$([MSBuild]::IsOSPlatform('Linux'))" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="EmbyBadges.Tests" />
+  </ItemGroup>
+
   <!-- Ressources embarquées -->
   <ItemGroup>
     <EmbeddedResource Include="thumb.jpg" />
