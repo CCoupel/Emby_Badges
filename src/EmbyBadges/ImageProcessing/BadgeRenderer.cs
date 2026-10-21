@@ -17,6 +17,10 @@ public class BadgeRenderer
     private static readonly SKColor ColorVo       = new SKColor(30,  100, 180);
     private static readonly SKColor ColorFavorite = new SKColor(200, 30,  60);
     private static readonly SKColor ColorRating   = new SKColor(170, 130, 0);
+    private static readonly SKColor ColorSync     = new SKColor(0,   120, 140);
+    private static readonly SKColor ColorSyncRemoved  = new SKColor(200, 30,  30);
+    private static readonly SKColor ColorSyncRead     = new SKColor(220, 120, 0);
+    private static readonly SKColor ColorSyncPosition = new SKColor(40,  150, 60);
 
     public BadgeRenderer(ILogger logger) => _logger = logger;
 
@@ -106,8 +110,43 @@ public class BadgeRenderer
         if (config.ShowRating && mediaInfo.Rating is float rating)
             list.Add(new TextBadge(rating.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture), ColorRating, config.Rating));
 
+        // Synchro PlaySync
+        if (config.ShowSync)
+        {
+            var shown = SyncShown(mediaInfo.SyncTypes, config);
+            if (shown != SyncTypes.None)
+            {
+                if (config.SyncRenderMode == SyncRenderMode.Color)
+                    list.Add(new SyncBadge(ColorOf(shown), config.Sync));
+                else
+                    list.Add(new TextBadge(LettersOf(shown), ColorSync, config.Sync));
+            }
+        }
+
         return list;
     }
+
+    /// <summary>Types détectés ∩ types activés dans la config.</summary>
+    internal static SyncTypes SyncShown(SyncTypes detected, PluginConfiguration config)
+    {
+        var mask = SyncTypes.None;
+        if (config.ShowSyncPosition) mask |= SyncTypes.Position;
+        if (config.ShowSyncRead)     mask |= SyncTypes.Read;
+        if (config.ShowSyncRemoved)  mask |= SyncTypes.Removed;
+        return detected & mask;
+    }
+
+    /// <summary>Lettres dans l'ordre fixe P, L, S.</summary>
+    internal static string LettersOf(SyncTypes t)
+        => (t.HasFlag(SyncTypes.Position) ? "P" : "")
+         + (t.HasFlag(SyncTypes.Read)     ? "L" : "")
+         + (t.HasFlag(SyncTypes.Removed)  ? "S" : "");
+
+    /// <summary>Couleur du type le plus fort : Removed (rouge) > Read (orange) > Position (vert).</summary>
+    internal static SKColor ColorOf(SyncTypes t)
+        => t.HasFlag(SyncTypes.Removed) ? ColorSyncRemoved
+         : t.HasFlag(SyncTypes.Read)    ? ColorSyncRead
+         : ColorSyncPosition;
 
     private static void TryAddPng(List<BadgeItem> list, List<string> actuals, bool enabled, GroupConfig cfg, string expected, bool highlighted = false)
     {
@@ -342,6 +381,55 @@ public class BadgeRenderer
 
             p.Close();
             return p;
+        }
+    }
+
+    private class SyncBadge : BadgeItem
+    {
+        private readonly SKColor _color;
+        public SyncBadge(SKColor color, GroupConfig cfg) : base(cfg) => _color = color;
+
+        public override float Width(int h) => h; // carré
+
+        public override void Draw(SKCanvas canvas, float x, float y, int h, float opacity)
+        {
+            var rrect = new SKRoundRect(new SKRect(x, y, x + h, y + h), h * 0.2f);
+            using var bg = new SKPaint { Color = _color.WithAlpha((byte)(opacity * 210)), IsAntialias = true };
+            canvas.DrawRoundRect(rrect, bg);
+
+            float cx = x + h / 2f, cy = y + h / 2f;
+            float r = h * 0.35f;
+            float sw = Math.Max(2f, h / 9f);
+            var white = SKColors.White.WithAlpha((byte)(opacity * 255));
+
+            using var stroke = new SKPaint
+            {
+                Color = white, IsAntialias = true, Style = SKPaintStyle.Stroke,
+                StrokeWidth = sw, StrokeCap = SKStrokeCap.Round
+            };
+            using var fill = new SKPaint { Color = white, IsAntialias = true, Style = SKPaintStyle.Fill };
+
+            var oval = new SKRect(cx - r, cy - r, cx + r, cy + r);
+            // Deux arcs de ~140° opposés, chacun terminé par une pointe de flèche (sens horaire).
+            foreach (float start in new[] { 200f, 20f })
+            {
+                using var arc = new SKPath();
+                arc.AddArc(oval, start, 140f);
+                canvas.DrawPath(arc, stroke);
+
+                // Pointe à l'extrémité de l'arc (angle start+140), tangente horaire.
+                float a = (start + 140f) * (float)Math.PI / 180f;
+                float px = cx + r * (float)Math.Cos(a), py = cy + r * (float)Math.Sin(a);
+                float tx = -(float)Math.Sin(a), ty = (float)Math.Cos(a);   // tangente
+                float nx = (float)Math.Cos(a),  ny = (float)Math.Sin(a);   // normale
+                float hl = sw * 2.2f;
+                using var head = new SKPath();
+                head.MoveTo(px + tx * hl, py + ty * hl);
+                head.LineTo(px + nx * hl * 0.8f, py + ny * hl * 0.8f);
+                head.LineTo(px - nx * hl * 0.8f, py - ny * hl * 0.8f);
+                head.Close();
+                canvas.DrawPath(head, fill);
+            }
         }
     }
 }
