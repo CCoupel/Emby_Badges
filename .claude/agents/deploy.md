@@ -8,14 +8,14 @@
 
 - Artefact unique : `EmbyBadges.dll` (plugin Emby, `net6.0`). Pas de Docker, pas de tarball.
 - Outillage (hors PATH) : `DOTNET="C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe"`, `python` (WSL/Windows).
-- Pas de tests automatises (`commands.test` vide) : le prerequis "tests" du template est sans objet.
-  La validation fonctionnelle se fait en QUALIF (instance `emby2`) par l'utilisateur.
+- Tests automatises : projet xUnit `tests/EmbyBadges.Tests/`, lance par `commands.test` (`project-config.json`)
+  = `dotnet test tests/EmbyBadges.Tests/`. La validation fonctionnelle se fait en QUALIF (instance `emby2`) par l'utilisateur.
 - Version : `<Version>` de `src/EmbyBadges/EmbyBadges.csproj` (`version_file` du project-config). Format historique
   a 3 champs (`1.2.0`) : le lire comme `X.Y.Z.0`, et ecrire au format `X.Y.Z.a` (4 champs, valide pour .NET).
   Extraction : `sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' src/EmbyBadges/EmbyBadges.csproj`
   (ne jamais faire `cat` du fichier, contrairement aux exemples du template). Ecriture : remplacer
   uniquement le contenu de la balise `<Version>`.
-- Le projet travaille directement sur `main` (pas de branche `milestone/vX.Y.Z`) sauf mention contraire.
+- Le travail se fait sur la branche du milestone `milestone/vX.Y.Z` (regle CDP), jamais directement sur `main`, sauf mention contraire.
 
 ## Tache BUILD (remplace l'etape 3 du template)
 
