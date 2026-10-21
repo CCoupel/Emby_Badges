@@ -2,7 +2,7 @@
 
 ## Etat courant
 - Version : `<Version>` dans `src/EmbyBadges/EmbyBadges.csproj` = 1.1.3 (dernier tag : v1.2.0) — format 3 champs, a passer en `X.Y.Z.a` au premier `/build`.
-- Template Claude synchronise en `v3.13.1` (2026-10-08) ; changements du sync NON commites (`CLAUDE.md` bloc TEAMLEADER_PROTOCOL + section Release, `.claude/commands/init-project.md`, `.claude/project-config.json`, nouveau `.claude/agents/context/PROJECT_CONTEXT.md`).
+- Template Claude synchronise en `v3.23.3` (2026-10-21, registre des agents `agents.registry[]` cree) ; changements NON commites : `CLAUDE.md`, `.claude/project-config.json` (`commands.ci`), `.claude/settings.json`, `.gitignore`, `.claude/commands/init-project.md`, `scripts/ci.sh`, `.github/workflows/ci-branch.yml`, `contracts/`.
 - Site marketing v1.2.0 publie le 2026-10-08 : gh-pages `87502e9`, release notes + posts sur main `1d5085c` (`docs/releases/v1.2.0/`). GitHub Pages actif (source gh-pages `/`), URL https://ccoupel.github.io/Emby_Badges/ ; etait en "building" (404) a la cloture : a reverifier. Posts X/LinkedIn/Reddit rediges mais PAS envoyes.
 - CI `release.yml` auditee par `infra` (conforme avec reserves) puis corrigee (commit `a676337`) ; `.gitattributes` LF (`20bb88a`).
 
@@ -21,12 +21,11 @@
 ## Pratiques / pieges
 - Teammates : l'alias `main` est refuse dans leurs sessions ; ils repondent a `team-lead`. Pas d'outil TeamCreate : agents spawnes par nom canonique.
 - Chrome sur Emby : cliquer au centre d'une affiche LANCE la lecture. Ouvrir une fiche en cliquant le bord de l'affiche ; ne jamais capturer le tableau de bord (IP, activite) ni le champ cle TMDB / le profil du menu lateral.
-- WSL : `python3` et `/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe` pour builder ; les chemins `C:/...` du CLAUDE.md ne marchent que sous Git Bash/Windows.
 
 ## A verifier / prochaine session
 - Verifier que https://ccoupel.github.io/Emby_Badges/ s'affiche (build Pages) et le rendu mobile du site (non controle visuellement).
 - Emby : une lecture a ete lancee par erreur (probablement "Spider-Man : Brand New Day") pendant la prise de captures : verifier/supprimer l'entree dans "Reprendre la lecture".
 - Premier `/build` → `/publish qualif` → `/deploy qualif` : procedures kubectl jamais executees (detection du pod PROD `^emby-` a valider).
-- Avant le prochain tag : bumper le csproj ; `actionlint` non installe, syntaxe du workflow non verifiee hors `yaml.safe_load`.
-- A signaler au mainteneur du template : alias `main` non resolu pour les teammates ; `CLAUDE.md` bloc protocole reference `.claude/agents/teamleader.md` (seul `.template.md` existe) ; contextes referencent `context/PROJECT_CONTEXT.md` (compagnon cree localement).
+- Avant le prochain tag : bumper le csproj ; `ci-branch.yml` jamais execute sur GitHub (a pousser puis `gh workflow run ci-branch.yml`) ; `actionlint` non installe, syntaxe du workflow non verifiee hors `yaml.safe_load`.
+- A signaler au mainteneur du template : alias `main` non resolu pour les teammates ; contextes referencent `context/PROJECT_CONTEXT.md` (compagnon cree localement).
 - Stash ancien `stash@{0}` (feat/initial-scaffold) toujours present.

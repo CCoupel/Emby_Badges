@@ -30,6 +30,10 @@ Each badge group (Resolution, Language, MultiVersion, Favorites) has independent
   --output dist/
 ```
 
+Under WSL use `python3` and `/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe` (the `C:/...` paths only work on Git Bash/Windows).
+
+**CI script:** `bash scripts/ci.sh` (`commands.ci`) runs `gen_config_page.py` + Release build and checks `dist/EmbyBadges.dll`; it auto-detects the user-level `dotnet` (override with `DOTNET=`). `.github/workflows/ci-branch.yml` runs it on `milestone/**` pushes and `workflow_dispatch` (pre-validation, read-only, no publish) — it is the barrier checked before `/publish prod`. `release.yml` still has its own steps (deferred gap: not yet reduced to `run: bash scripts/ci.sh`).
+
 Produces `dist/EmbyBadges.dll`. Official process: `/build` (candidate) → `/publish qualif` → `/deploy qualif` (→ `/publish prod` → `/deploy prod`). Project-specific procedures live in `.claude/agents/deploy.md` and `.claude/agents/environments/{publish,deploy}.{qualif,prod}.md`.
 
 ### Config page generation
@@ -241,26 +245,22 @@ test-writer, code-reviewer, qa, doc-updater, deployer, security, infra
 
 ### Questions à l'utilisateur
 
-**Règle absolue** : toute information, décision ou validation attendue de l'utilisateur est posée
-**via l'outil `AskUserQuestion`** — jamais en texte dans le chat (pas de liste numérotée, pas de « OUI/NON »,
-pas de `[O/n]`, pas de « dis-moi »). Ça vaut aussi pour les questions remontées par un teammate
-(`BLOQUE` / `FAILED` — format unique `[NOM] BLOQUE` + `Questions:`, `TEAMMATES_PROTOCOL.md`).
-
-Chaîne : les teammates ne parlent jamais à l'utilisateur — ils t'envoient leurs questions et options
-(`SendMessage` vers `main`), **tu les convertis en `AskUserQuestion`**, puis tu leur renvoies les réponses
-via `SendMessage`.
-
-- Questions fermées, 2 à 4 options, label court + description (contexte/conséquence), option par défaut
-  marquée « (Recommandé) » ; pas d'option « Autre » (ajoutée automatiquement).
-- Tout regrouper dans **un seul appel** `AskUserQuestion` (jusqu'à 4 questions).
-- Seule exception : une question de découverte ouverte par nature (workshop de cadrage).
-
-Détail et checklist avant chaque message à l'utilisateur : `.claude/agents/teamleader.md`, section « Questions à l'utilisateur ».
+**Règle absolue** : toute information, décision ou validation attendue de l'utilisateur (y compris les `BLOQUE` /
+`FAILED` remontés par un teammate) passe **par l'outil `AskUserQuestion`** — jamais en texte dans le chat (pas de
+liste numérotée, « OUI/NON », `[O/n]`). Les teammates ne parlent jamais à l'utilisateur : tu convertis leurs
+questions en `AskUserQuestion`, puis tu leur renvoies les réponses via `SendMessage`.
+Procédure, format et checklist : `.claude/agents/teamleader.md`, section « Questions à l'utilisateur ».
 
 ### Relayer l'avancement
 
 Chaque jalon `[NOM] EN COURS — …` d'un teammate (ex. `QA EN COURS — lot 3/12 …`) est relayé à l'utilisateur en
-une ligne, sans attendre le DONE. Un jalon n'est pas un DONE : ne pas enchaîner avant le DONE.
+une ligne, sans attendre le DONE. Un jalon n'est pas un DONE : ne pas enchaîner avant le DONE. Si un jalon signale des échecs, les nommer dans le relais.
+
+### Labels d'issues — à chaque changement de phase
+
+Mettre à jour les labels de **toutes** les issues suivies (`ISSUE_NUMS[]`) **avant** d'envoyer l'ordre suivant, **et dès l'événement** (retour de fin de tâche d'un teammate `DONE`/`FAILED`/`BLOQUE`, validation d'un GATE — `GITHUB.md` §9.12), avant de le relayer. L'état dit ce qui **reste à faire** (ex. `PRET` = plan validé, DEV pas lancé), pas ce qu'un teammate fait à cet instant :
+`SendMessage` à `deployer` (`gh issue edit --add-label … --remove-label …`, `.claude/commands/context/GITHUB.md` §9).
+La clôture du milestone reste soumise à la validation utilisateur.
 
 ### Validation des rapports DONE
 

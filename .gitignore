@@ -47,3 +47,5 @@ _work/
 build/
 !.claude/commands/init-project.md
 MARKETING/
+.claude/skills/milestone-panel/
+.claude/worktrees/
