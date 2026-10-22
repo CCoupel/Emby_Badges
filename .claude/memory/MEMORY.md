@@ -1,31 +1,32 @@
 # MEMORY — Emby_Badges
 
 ## Etat courant
-- Version : `<Version>` dans `src/EmbyBadges/EmbyBadges.csproj` = 1.1.3 (dernier tag : v1.2.0) — format 3 champs, a passer en `X.Y.Z.a` au premier `/build`.
-- Template Claude synchronise en `v3.23.3` (2026-10-21, registre des agents `agents.registry[]` cree) ; changements NON commites : `CLAUDE.md`, `.claude/project-config.json` (`commands.ci`), `.claude/settings.json`, `.gitignore`, `.claude/commands/init-project.md`, `scripts/ci.sh`, `.github/workflows/ci-branch.yml`, `contracts/`.
-- Site marketing v1.2.0 publie le 2026-10-08 : gh-pages `87502e9`, release notes + posts sur main `1d5085c` (`docs/releases/v1.2.0/`). GitHub Pages actif (source gh-pages `/`), URL https://ccoupel.github.io/Emby_Badges/ ; etait en "building" (404) a la cloture : a reverifier. Posts X/LinkedIn/Reddit rediges mais PAS envoyes.
-- CI `release.yml` auditee par `infra` (conforme avec reserves) puis corrigee (commit `a676337`) ; `.gitattributes` LF (`20bb88a`).
+- Version : PROD `v1.3.0` livree le 2026-10-22 sur `emby` (tag `v1.3.0`, merge `e7aa232`, Release GitHub avec `EmbyBadges.dll` 672256 o). QUALIF `emby2` a la meme DLL (1.3.0.1). csproj `<Version>` = `1.3.0` sur `main` (le prochain milestone repasse en `X.Y.Z.0` a l'ouverture de sa branche).
+- Milestone `v1.3.0` (n°1) CLOS — issue #4 (badge Synchro PlaySync) fermee. Aucune issue ouverte, aucun milestone ouvert. Branche `main` = `e7aa232`, poussee. Branches `milestone/v1.3.0`, `feat/*` supprimees ; `gh-pages` conservee.
+- Template Claude `v3.23.3` (a jour au 2026-10-21). CI `ci-branch.yml` desormais executee et verte sur `milestone/**`.
+- Premier projet de tests : `tests/EmbyBadges.Tests/` (xUnit, 61 tests, logique pure du badge Synchro) ; `commands.test` renseigne dans `project-config.json`. Procedure manuelle `tests/procedures/badges/synchro/synchro-qualif.md` (CA1–CA11).
+- Site marketing v1.2.0 (gh-pages) : les release notes v1.3.0 (`docs/releases/v1.3.0/release-notes.md`) ne sont PAS publiees sur le site ; posts v1.2.0 jamais envoyes.
 
 ## Decisions
-- Ancien `/build` (build + kubectl cp sur emby2) converti en BUILD/PUBLISH/DEPLOY : `.claude/agents/deploy.md` + `.claude/agents/environments/{publish,deploy}.{qualif,prod}.md` (compagnons, prevalent sur les `*.template.md`).
-- QUALIF = `deployment/emby2`, PROD = `deployment/emby` (namespace `media`). PROD deploye uniquement via `/deploy prod` sur ordre explicite, depuis l'asset de la GitHub Release (CI `release.yml`, tag `vX.Y.Z`).
-- `kubectl rollout undo` inoperant (DLL sur volume) : rollback = restaurer `EmbyBadges.dll.prev`.
-- Pas de tests automatises ni de CHANGELOG.md.
-- Agents : 9 retenus dans la table de CLAUDE.md (pas de dev-backend/dev-frontend).
-- CI : le step "Check tag matches csproj version" est une ERREUR (choisie 2026-10-02) : bumper `<Version>` du csproj a la version du tag AVANT de tagger, sinon le build echoue. `gen_config_page.py` execute en CI avant le build. (Regle aussi dans CLAUDE.md, section Release.)
-- `.gitattributes` force LF (`*.yml *.cs *.csproj *.sln *.py *.md *.json`).
-- Ecarts CI differes : somme de controle / nom versionne du livrable, CHANGELOG.md, epinglage des actions par SHA.
-- Plugin : Primary et Thumb badges pour Movie/Episode/Series/Season ; Backdrop badge pour Episode/Series/Season, PAS pour Movie. Cas visible verifie : vignettes paysage "Reprendre la lecture". Le fond plein ecran des fiches (ex. Ranma ½) n'a PAS de badge observe : cause non elucidee (comportement Emby, cache ou defaut plugin). Le site ne promet rien sur le fond des fiches ni des films.
-- Marketing : ton fun et ludique, site FR/EN sur gh-pages (worktree `MARKETING/`, exclu via `.git/info/exclude` et `.gitignore`). Captures reelles prises sur l'Emby de l'utilisateur (http://media.local/emby) via Chrome.
+- Feature #4 (v1.3.0) : badge « Synchro » = 6e groupe de badges, source = etiquettes PlaySync (`remove-si-lu`, `propager-lu`, `propager-avancement`) lues comme `Tags` des playlists Emby partagees via SDK seul (`IItemRepository.GetUserItemShares`, pas de dependance a la DLL PlaySync). Union des types sur toutes les playlists ; « supprime » = etat effectif (remove ET propager-lu) ; modes de rendu Lettres `PLS` (fond sarcelle) ou Couleur (rouge supprime > orange lu > vert position, pictogramme vectoriel SkiaSharp) ; position par defaut TopLeft ; index memoire TTL 5 min, 1er build bloquant puis rebuild en tache de fond ; propagation episode → saison → serie seulement. Contrat : `contracts/models.md`. Images globales (meme limitation que Favoris).
+- `IItemRepository` injecte directement dans le constructeur de `BadgeEnhancer` (sans repli) : verifie OK en QUALIF et PROD (plugin charge sans exception).
+- Ancien `/build` converti en BUILD/PUBLISH/DEPLOY : `.claude/agents/deploy.md` + `environments/{publish,deploy}.{qualif,prod}.md`. Procedures executees de bout en bout pour la 1re fois le 2026-10-21/22 : OK (sous WSL : `python3` + `/mnt/c/.../dotnet.exe`, `export KUBECONFIG=private/kubeconfig.yml` ; verifier la DLL via `kubectl exec deployment/<x> -- stat -c %s` car l'ancien pod peut etre encore liste apres rollout).
+- QUALIF = `deployment/emby2`, PROD = `deployment/emby` (namespace `media`). PROD uniquement via `/deploy prod` sur ordre explicite, depuis l'asset de la GitHub Release. Rollback = restaurer `EmbyBadges.dll.prev`.
+- CI : step « Check tag matches csproj version » = ERREUR ; bumper le csproj a `X.Y.Z` avant de tagger (fait par le deployer en PUBLISH PROD). `.gitattributes` force LF.
+- Pas de CHANGELOG.md (decision maintenue) ; release notes par version dans `docs/releases/vX.Y.Z/`.
+- Agents : 9 dans la table CLAUDE.md ; `infra` ponctuel spawne en Phase 5 pour validation QUALIF (lecture seule).
+- Marketing : ton fun, site FR/EN sur gh-pages (worktree `MARKETING/`). Captures sur l'Emby de l'utilisateur via Chrome (jamais le tableau de bord ni la cle TMDB).
 
 ## Pratiques / pieges
-- Teammates : l'alias `main` est refuse dans leurs sessions ; ils repondent a `team-lead`. Pas d'outil TeamCreate : agents spawnes par nom canonique.
-- Chrome sur Emby : cliquer au centre d'une affiche LANCE la lecture. Ouvrir une fiche en cliquant le bord de l'affiche ; ne jamais capturer le tableau de bord (IP, activite) ni le champ cle TMDB / le profil du menu lateral.
+- Teammates : alias `main` refuse dans leurs sessions ; ils adressent `team-lead`. Pas d'outil TeamCreate. Le fichier protocole est `.claude/agents/context/TEAMMATES_PROTOCOL.template.md` (pas de version sans suffixe) : le mentionner tel quel dans le prompt de spawn.
+- Les commits des teammates portent le trailer de leur propre modele (Haiku/Sonnet) : normal, ne pas corriger.
+- Logs Emby : « SyncIndex reconstruit » est en niveau Debug (`EnableDebugLevelLogging` necessaire pour l'observer). Boot de `emby`/`emby2` : exceptions IsoMounter/VirtualLib (`ILogger<T>`) sans lien avec EmbyBadges.
+- Chrome sur Emby : cliquer au centre d'une affiche LANCE la lecture ; ouvrir une fiche par le bord.
 
 ## A verifier / prochaine session
-- Verifier que https://ccoupel.github.io/Emby_Badges/ s'affiche (build Pages) et le rendu mobile du site (non controle visuellement).
-- Emby : une lecture a ete lancee par erreur (probablement "Spider-Man : Brand New Day") pendant la prise de captures : verifier/supprimer l'entree dans "Reprendre la lecture".
-- Premier `/build` → `/publish qualif` → `/deploy qualif` : procedures kubectl jamais executees (detection du pod PROD `^emby-` a valider).
-- Avant le prochain tag : bumper le csproj ; `ci-branch.yml` jamais execute sur GitHub (a pousser puis `gh workflow run ci-branch.yml`) ; `actionlint` non installe, syntaxe du workflow non verifiee hors `yaml.safe_load`.
-- A signaler au mainteneur du template : alias `main` non resolu pour les teammates ; contextes referencent `context/PROJECT_CONTEXT.md` (compagnon cree localement).
+- Validation visuelle CA1–CA11 du badge Synchro par l'utilisateur dans l'interface (QUALIF `emby2` : 1 playlist partagee `test`, 2 films ; etiquettes non verifiees) → `/bugfix` si ecart. Cohabitation TopLeft Synchro/Note/MultiVersion a controler a l'oeil.
+- Ecarts infra differes (rapport infra 2026-10-21) : E4 `scripts/ci.sh` n'execute pas `dotnet test` ; E5 `release.yml` non reduit a `bash scripts/ci.sh` ; somme de controle / epinglage des actions par SHA. Groupe Note (Rating) ajoute au README/CLAUDE.md seulement en v1.3.0.
+- `/marketing v1.3.0` : publier les release notes sur le site gh-pages ; verifier https://ccoupel.github.io/Emby_Badges/ et le rendu mobile.
+- Emby : lecture lancee par erreur (« Spider-Man : Brand New Day ») a retirer de « Reprendre la lecture ».
+- A signaler au mainteneur du template : alias `main` non resolu pour les teammates ; chemin `TEAMMATES_PROTOCOL.md` sans suffixe dans `/start-session` ; `/milestone` n'a pas de mode « start » (demarrer un milestone = `/feature #N`) ; CDP_WORKFLOWS Phase Init ecrit la version avec `echo > csproj` (a adapter : `sed` sur `<Version>`).
 - Stash ancien `stash@{0}` (feat/initial-scaffold) toujours present.
