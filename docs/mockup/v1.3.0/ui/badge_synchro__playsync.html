@@ -1,0 +1,133 @@
+<!--
+mockup:
+  composant: badge_synchro
+  feature: playsync
+  version: 1.3.0
+  type: ui
+  issue: "#4"
+  validee_le: 2026-10-21
+  complete: []
+  remplace: []
+-->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maquette — Badge Synchro (PlaySync) — Emby Badges v1.3.0</title>
+<style>
+  :root { --bg:#101010; --panel:#1c1c1c; --fg:#eee; --muted:#9a9a9a; --accent:#52b54b; }
+  body { margin:0; padding:24px 16px; background:var(--bg); color:var(--fg); font-family: "Trebuchet MS", Arial, sans-serif; }
+  h1 { font-size:1.4em; margin:0 0 4px; } h2 { font-size:1.1em; margin:28px 0 10px; color:var(--accent); }
+  p.note { color:var(--muted); font-size:.9em; margin:0 0 16px; }
+  .row { display:flex; flex-wrap:wrap; gap:22px; }
+  .poster { position:relative; width:200px; height:300px; border-radius:6px; overflow:hidden;
+            background:linear-gradient(160deg,#3a4a6a,#1a2238 60%,#0c0f18); box-shadow:0 4px 14px #0008; }
+  .poster .title { position:absolute; left:0; right:0; top:42%; text-align:center; color:#fff8; font-size:13px; }
+  .caption { width:200px; font-size:.82em; color:var(--muted); margin-top:6px; }
+  /* Badges existants (contexte inchangé) */
+  .b { position:absolute; display:flex; gap:3px; }
+  .b.bl { left:4px; bottom:6px; } .b.br { right:4px; bottom:6px; } .b.tr { right:4px; top:6px; } .b.tl { left:4px; top:6px; }
+  .png { height:22px; padding:0 6px; border-radius:3px; background:#333; color:#fff; font-size:11px; line-height:22px; font-weight:bold; }
+  .heart { color:#c81e3c; font-size:22px; line-height:22px; }
+  .rating { height:22px; padding:0 6px; border-radius:4px; background:rgba(170,130,0,.82); color:#fff; font-size:12px; line-height:22px; font-weight:bold; }
+  /* Nouveau badge Synchro */
+  .sync-letters { height:24px; padding:0 7px; border-radius:5px; background:rgba(0,120,140,.82); color:#fff;
+                  font-size:13.5px; line-height:24px; font-weight:bold; letter-spacing:1px; }
+  .sync-color { width:24px; height:24px; border-radius:5px; display:flex; align-items:center; justify-content:center; }
+  .sync-color.red { background:rgba(200,30,30,.82);} .sync-color.orange { background:rgba(220,120,0,.82);} .sync-color.green { background:rgba(40,150,60,.82);}
+  .sync-color svg { width:17px; height:17px; }
+  /* Page de config (section nouvelle, dans le style de l'existant) */
+  .cfg { background:var(--panel); border-radius:8px; padding:16px 18px; max-width:760px; }
+  .cfg .hdr { font-weight:600; font-size:1.05em; border-bottom:1px solid #fff2; padding-bottom:10px; margin-bottom:12px; }
+  .cfg .dim { opacity:.45; }
+  .eb-toggle { display:inline-flex; align-items:center; gap:6px; margin:0 16px 12px 0; }
+  .eb-toggles { margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid #fff1; }
+  .eb-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 20px; }
+  .field label { display:block; font-size:.8em; color:var(--muted); margin-bottom:3px; }
+  .field select, .field input { width:100%; box-sizing:border-box; background:#2a2a2a; color:#fff; border:1px solid #444; border-radius:3px; padding:6px; }
+  .field .desc { font-size:.78em; color:var(--muted); margin-top:4px; }
+  table { border-collapse:collapse; font-size:.9em; } td, th { border:1px solid #333; padding:5px 10px; text-align:left; }
+  @media (max-width:600px){ .eb-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<h1>Badge « Synchro » (PlaySync) — maquette v1.3.0, issue #4</h1>
+<p class="note">Composant complet : affiche avec les badges existants (résolution, langue, favori, note — inchangés) et le nouveau groupe Synchro,
+position par défaut <b>Haut gauche</b> (modifiable comme les autres groupes). Le badge est unique par média et cumule les types actifs de toutes
+les playlists partagées contenant le média.</p>
+
+<h2>1. Mode « lettres » (défaut) — ordre fixe P · L · S</h2>
+<div class="row">
+  <div><div class="poster"><div class="title">Film A</div>
+    <div class="b tl"><span class="sync-letters">PLS</span></div>
+    <div class="b bl"><span class="png">4K</span><span class="png">FR</span></div>
+    <div class="b br"><span class="heart">&#10084;</span></div>
+    <div class="b tr"><span class="rating">7.8</span></div>
+  </div><div class="caption">3 types actifs : position + lu + supprimé</div></div>
+  <div><div class="poster"><div class="title">Film B</div>
+    <div class="b tl"><span class="sync-letters">L</span></div>
+    <div class="b bl"><span class="png">1080p</span></div>
+  </div><div class="caption">1 seul type (lu) : une seule lettre, badge plus étroit, même hauteur</div></div>
+  <div><div class="poster"><div class="title">Film C</div>
+    <div class="b tl"><span class="sync-letters">PS</span></div>
+    <div class="b bl"><span class="png">720p</span><span class="png">EN</span></div>
+  </div><div class="caption">Union de 2 playlists : A (position) + B (supprimé)</div></div>
+  <div><div class="poster"><div class="title">Film D</div>
+    <div class="b bl"><span class="png">1080p</span></div>
+  </div><div class="caption">Aucune playlist partagée synchronisée : pas de badge</div></div>
+</div>
+
+<h2>2. Mode « couleur » — pictogramme sync, couleur du type le plus fort</h2>
+<div class="row">
+  <div><div class="poster"><div class="title">Film A</div>
+    <div class="b tl"><span class="sync-color red"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M20 12a8 8 0 0 1-13.7 5.6"/><path d="M4 12a8 8 0 0 1 13.7-5.6"/><path d="M17.7 2.6v3.8h-3.8"/><path d="M6.3 21.4v-3.8h3.8"/></svg></span></div>
+    <div class="b bl"><span class="png">4K</span><span class="png">FR</span></div>
+    <div class="b br"><span class="heart">&#10084;</span></div>
+    <div class="b tr"><span class="rating">7.8</span></div>
+  </div><div class="caption"><b style="color:#e04040">Rouge</b> : supprimé (prioritaire, même si lu/position aussi actifs)</div></div>
+  <div><div class="poster"><div class="title">Film B</div>
+    <div class="b tl"><span class="sync-color orange"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M20 12a8 8 0 0 1-13.7 5.6"/><path d="M4 12a8 8 0 0 1 13.7-5.6"/><path d="M17.7 2.6v3.8h-3.8"/><path d="M6.3 21.4v-3.8h3.8"/></svg></span></div>
+    <div class="b bl"><span class="png">1080p</span></div>
+  </div><div class="caption"><b style="color:#f0a040">Orange</b> : lu (sans suppression)</div></div>
+  <div><div class="poster"><div class="title">Film E</div>
+    <div class="b tl"><span class="sync-color green"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round"><path d="M20 12a8 8 0 0 1-13.7 5.6"/><path d="M4 12a8 8 0 0 1 13.7-5.6"/><path d="M17.7 2.6v3.8h-3.8"/><path d="M6.3 21.4v-3.8h3.8"/></svg></span></div>
+    <div class="b bl"><span class="png">720p</span></div>
+  </div><div class="caption"><b style="color:#50c060">Vert</b> : position seule</div></div>
+</div>
+<p class="note" style="margin-top:12px">Pictogramme dessiné en vecteur (SkiaSharp, comme le cœur des favoris) : pas de PNG à embarquer, teinte libre. Taille, marge et opacité suivent les réglages du groupe.</p>
+
+<h2>3. Page de configuration — nouvelle section « Synchro (PlaySync) » (les autres sections sont inchangées)</h2>
+<div class="cfg">
+  <div class="hdr dim">Note &nbsp;<span style="font-weight:normal;font-size:.85em">(section existante, inchangée)</span></div>
+  <div class="hdr">Synchro (PlaySync)</div>
+  <div class="eb-toggles">
+    <label class="eb-toggle"><input type="checkbox" checked> <span class="sync-letters">PLS</span> <span>Activer le badge (média présent dans une playlist partagée synchronisée)</span></label>
+    <div style="width:100%"></div>
+    <label class="eb-toggle"><input type="checkbox" checked> <span class="sync-letters">P</span> <span>Position (propager-avancement)</span></label>
+    <label class="eb-toggle"><input type="checkbox" checked> <span class="sync-letters">L</span> <span>Lu (propager-lu)</span></label>
+    <label class="eb-toggle"><input type="checkbox" checked> <span class="sync-letters">S</span> <span>Supprimé (remove-si-lu)</span></label>
+    <div class="field" style="margin-top:6px;max-width:360px">
+      <label>Mode de rendu</label>
+      <select><option selected>Lettres (P / L / S cumulées)</option><option>Couleur (pictogramme : rouge = supprimé, orange = lu, vert = position)</option></select>
+      <div class="desc">Lettres : un badge texte listant les types actifs. Couleur : un pictogramme « sync » dont la couleur reflète le type le plus fort.</div>
+    </div>
+  </div>
+  <div class="eb-grid">
+    <div class="field"><label>Position</label><select><option>Haut gauche</option><option>Haut centre</option><option>Haut droite</option><option>Centre gauche</option><option>Centre droite</option><option>Bas gauche</option><option>Bas centre</option><option>Bas droite</option></select></div>
+    <div class="field"><label>Taille (% image)</label><input value="8"></div>
+    <div class="field"><label>Marge (% largeur)</label><input value="2"></div>
+    <div class="field"><label>Opacité (0–1)</label><input value="0.92"></div>
+  </div>
+</div>
+
+<h2>4. Règles résumées</h2>
+<table>
+  <tr><th>Étiquette playlist (PlaySync)</th><th>Type</th><th>Lettre</th><th>Couleur</th><th>Priorité couleur</th></tr>
+  <tr><td><code>propager-avancement=OUI</code></td><td>position</td><td>P</td><td>vert</td><td>3</td></tr>
+  <tr><td><code>propager-lu=OUI</code></td><td>lu</td><td>L</td><td>orange</td><td>2</td></tr>
+  <tr><td><code>remove-si-lu=OUI</code> (+ <code>propager-lu=OUI</code>, état effectif)</td><td>supprimé</td><td>S</td><td>rouge</td><td>1</td></tr>
+</table>
+<p class="note" style="margin-top:10px">Plusieurs playlists → union des types. Série / saison → union sur tous les épisodes. Mise à jour visible au plus 5 min après un changement d'étiquette ou de contenu (index en mémoire), puis régénération du cache d'images Emby.</p>
+</body>
+</html>

@@ -10,8 +10,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Audio language**: French, English, VO (audio present but unknown language)
 - **Multi-version / VirtualLib**: connector initial letter (or "MULTI"), with configurable trigger
 - **Favorites**: heart icon when the item is marked as favorite by the first user
+- **Rating (Note)**: community rating shown on the poster (since v1.2.0)
+- **Synchro (PlaySync)**: sync state of the item in shared playlists tagged for PlaySync — `P` (position), `L` (read), `S` (removed), as letters or as a coloured sync pictogram (see « PlaySync integration »)
 
-Each badge group (Resolution, Language, MultiVersion, Favorites) has independent position, size, margin, and opacity settings. Individual badges within a group share those settings but can be individually enabled/disabled.
+Each badge group (Resolution, Language, MultiVersion, Favorites, Rating, Synchro) has independent position, size, margin, and opacity settings. Individual badges within a group share those settings but can be individually enabled/disabled.
 
 ## Technology Stack
 
@@ -45,6 +47,16 @@ python gen_config_page.py
 ```
 
 Must be run before building when the config page changes.
+
+### Tests
+
+Unit tests (xUnit) live in `tests/EmbyBadges.Tests/` (pure logic: `SyncDetector.EvaluateTags`, `SyncDetector.IsShared`, `BadgeRenderer.LettersOf`/`ColorOf`, cache key). They reach internals via `InternalsVisibleTo`.
+
+```bash
+/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe test tests/EmbyBadges.Tests/
+```
+
+Config key: `commands.test` in `.claude/project-config.json`.
 
 ## Deploy
 
@@ -81,7 +93,7 @@ The `.github/workflows/release.yml` CI triggers on `vX.Y.Z` tags, runs `gen_conf
 | `EnhanceImageAsync(...)` | Read inputFile → composite badges via SkiaSharp → write outputFile |
 | `GetEnhancedImageSize(...)` | Returns `originalSize` (badges drawn in-canvas, no resize) |
 
-**Cache key completeness is critical.** Missing any field (e.g. `IsFavorite`, `IsFromVirtualLib`) causes stale cached images. The cache key includes: all `GroupConfig` fields, all `ShowXxx` flags, `MultiVersionTrigger`, `ResolutionIcons`, `AudioLanguages`, `VersionConnectors`, `IsFromVirtualLib`, `IsFavorite`, `DebugMode`, TMDB key presence.
+**Cache key completeness is critical.** Missing any field (e.g. `IsFavorite`, `IsFromVirtualLib`) causes stale cached images. The cache key includes: all `GroupConfig` fields (including `Sync`), all `ShowXxx` flags, `MultiVersionTrigger`, `ResolutionIcons`, `AudioLanguages`, `VersionConnectors`, `IsFromVirtualLib`, `IsFavorite`, `DebugMode`, TMDB key presence, and for Synchro: `ShowSync`, `SyncRenderMode`, `ShowSyncPosition/Read/Removed`, `SyncTypes` (the detected state of the item).
 
 **Favorites limitation:** Images are cached globally — true per-user favorites badges aren't feasible. The plugin checks only `userManager.Users.FirstOrDefault()` (the first/admin user).
 
@@ -92,6 +104,23 @@ The config page is an HTML **fragment** (no `<html>/<head>/<body>`), with root `
 ### VirtualLib integration
 
 When VirtualLib plugin is installed, `BadgeDataExtractor` reads `{PluginConfigurationsPath}/VirtualLib.xml` to get `<VirtualLibraryRootPath>`. Media paths under this root follow `{root}/{ConnectorDisplayName}/...`. The connector name is extracted from the first path segment after root and used as the badge label initial.
+
+### PlaySync integration (Synchro badge)
+
+The Synchro badge reads the **PlaySync** labels stored on Emby items. It does **not** reference the PlaySync DLL: it only uses the Emby SDK. Without PlaySync, no playlist carries these labels, so no badge is shown and no error is logged.
+
+- **Labels**: `Playlist.Tags` of the Emby `Playlist` items. Three families: `remove-si-lu`, `propager-lu`, `propager-avancement`. Value `OUI` or `NON`, case-insensitive, spaces tolerated, pattern `^\s*<famille>\s*=\s*(NON|OUI)\s*\z`. Any other string (`remove-si-lu-oui`, `remove-si-lu=OUIX`, `remove-si-lu=`) is ignored. `NON` wins over `OUI`.
+- **Shared playlists only**: a playlist counts when `IItemRepository.GetUserItemShares` shows an owner line (`ManageDelete`) and at least one other member with `ShareLevel >= Read`. Unshared playlists are ignored (even if labelled).
+- **Types per playlist**: `Position` ← `propager-avancement=OUI`; `Read` ← `propager-lu=OUI`; `Removed` ← `remove-si-lu=OUI` **and** `propager-lu=OUI`. `Removed` is the *effective* state: PlaySync ≥ 1.2.0 makes `remove-si-lu` inert without `propager-lu`.
+- **Union**: an item's `SyncTypes` is the union over all shared playlists that contain it. An episode propagates its types to its season and to its series (done in the index, not in `AggregateEpisodes`).
+- **Index**: `SyncDetector` builds an in-memory snapshot `Dictionary<InternalId, SyncTypes>` in one pass (playlists → shares in one batch → children of labelled shared playlists). Lookups are O(1) when computing the cache key. TTL `SyncIndexTtl` = 5 min.
+  - First build: blocking on the request thread (other calls see the empty index meanwhile).
+  - Later rebuilds (TTL expired): the previous snapshot is served, the rebuild runs in the background (`Task.Run`, single flight). A failed rebuild is logged at Warn and keeps the previous snapshot.
+  - Children are read in this order, stopping at the first non-empty result: (1) each user with access to the playlist, by decreasing share level (owner first), via `GetChildren(new InternalItemsQuery(user))`; (2) a read without user; (3) fallback `GetItemList(ListIds = [playlist])`. Reading without a user alone returns empty for PlaySync's playlists (observed by PlaySync, U11), hence the owner-first order.
+- **Gating**: `ShowSync = false` → `GetSyncTypes` returns `None` before any call, and the index is never built (CA11).
+- **Scope**: images are cached globally, so the Synchro badge is the same for every Emby user, like Favorites. It reflects **all** shared labelled playlists on the server, not only those of the first user.
+- **Latency**: a change in playlist membership or labels is visible after at most 5 min (index TTL), then the Emby image cache must regenerate (the new key changes `enhanced-images`). `resized-images` still requires the manual purge (see « Image Cache »).
+- **Known limitation**: a season or series placed directly in a playlist is not propagated to its parent (only episodes propagate upward).
 
 ### Badge positions
 
@@ -126,13 +155,15 @@ src/EmbyBadges/
 ├── PluginConfiguration.cs       # GroupConfig, BadgePosition, MultiVersionTrigger enums
 ├── Enhancer/
 │   ├── BadgeEnhancer.cs         # IImageEnhancer — auto-discovered by Emby
-│   └── BadgeDataExtractor.cs    # Extracts resolution, languages, versions, VL connectors
+│   ├── BadgeDataExtractor.cs    # Extracts resolution, languages, versions, VL connectors
+│   └── SyncDetector.cs          # PlaySync labels + shares → SyncTypes; in-memory index (TTL 5 min)
 ├── ImageProcessing/
-│   ├── BadgeRenderer.cs         # SkiaSharp rendering; badge types: PngBadge, TextBadge, HeartBadge
+│   ├── BadgeRenderer.cs         # SkiaSharp rendering; badge types: PngBadge, TextBadge, HeartBadge, SyncBadge
 │   └── IconLoader.cs            # Thread-safe lazy loader for embedded PNGs and font
 └── Configuration/
     ├── configPage.html           # Generated — HTML fragment for Emby config UI
     └── configScript.js           # Generated — AMD module for config page JS
+tests/EmbyBadges.Tests/          # xUnit — pure logic (see « Tests »)
 ```
 
 Emby SDK DLLs in `libs/` use `<HintPath>` with `<Private>false</Private>` (present at Emby runtime, not bundled). Copy from `../Emby_Virtuallib/libs/` or a local Emby install.

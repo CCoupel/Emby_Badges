@@ -36,7 +36,8 @@ public static class BadgeDataExtractor
         IUserDataManager userDataManager,
         IUserManager userManager,
         ILogger logger,
-        string? tmdbApiKey = null)
+        string? tmdbApiKey = null,
+        SyncDetector? syncDetector = null)
     {
         // Série / saison : pas de flux propres → cumul des résolutions, langues et versions
         // de tous les épisodes ; note et favori restent ceux de la série/saison.
@@ -56,7 +57,10 @@ public static class BadgeDataExtractor
                 VersionConnectors         = info.VersionConnectors,
                 OriginDebugText           = info.OriginDebugText,
                 IsFavorite                = DetectFavorite(item, userDataManager, userManager, logger),
-                Rating                    = RatingOf(item)
+                Rating                    = RatingOf(item),
+                // Hors _aggregateCache : lookup O(1) dans l'index (le TTL de 5 min reste celui de l'index).
+                // L'index propage déjà les types des épisodes vers leur saison et leur série.
+                SyncTypes                 = syncDetector?.GetSyncTypes(item.InternalId) ?? SyncTypes.None
             };
         }
 
@@ -125,6 +129,7 @@ public static class BadgeDataExtractor
             VersionConnectors    = connectors,
             IsFavorite           = DetectFavorite(item, userDataManager, userManager, logger),
             Rating               = RatingOf(item),
+            SyncTypes            = syncDetector?.GetSyncTypes(item.InternalId) ?? SyncTypes.None,
             OriginDebugText      = originDebug
         };
     }
@@ -467,6 +472,9 @@ public class MediaInfo
 
     /// <summary>Note du média (CommunityRating, 0–10, arrondie à 1 décimale) ; null si absente.</summary>
     public float? Rating { get; set; }
+
+    /// <summary>Types de synchro PlaySync détectés (union des playlists partagées contenant le média).</summary>
+    public SyncTypes SyncTypes { get; set; } = SyncTypes.None;
 
     /// <summary>Texte de debug : source et langue originale détectée (ex: "TMDB:ja icon=lang_japanese").</summary>
     public string? OriginDebugText { get; set; }

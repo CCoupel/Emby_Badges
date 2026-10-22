@@ -18,6 +18,7 @@ public class PluginConfiguration : BasePluginConfiguration
     public GroupConfig MultiVersion { get; set; } = new() { Position = BadgePosition.TopRight };
     public GroupConfig Favorites    { get; set; } = new() { Position = BadgePosition.BottomRight };
     public GroupConfig Rating       { get; set; } = new() { Position = BadgePosition.TopLeft };
+    public GroupConfig Sync         { get; set; } = new() { Position = BadgePosition.TopLeft };
 
     /// <summary>Déclencheur du badge multi-version.</summary>
     public MultiVersionTrigger MultiVersionTrigger { get; set; } = MultiVersionTrigger.MultiVersionOnly;
@@ -37,6 +38,21 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool ShowFavorites { get; set; } = true;
     /// <summary>Affiche la note (CommunityRating, 0–10) du média.</summary>
     public bool ShowRating    { get; set; } = true;
+
+    // Badge « Synchro » (playlists partagées PlaySync)
+    public bool ShowSync          { get; set; } = true;
+    public SyncRenderMode SyncRenderMode { get; set; } = SyncRenderMode.Letters;
+    public bool ShowSyncPosition  { get; set; } = true;
+    public bool ShowSyncRead      { get; set; } = true;
+    public bool ShowSyncRemoved   { get; set; } = true;
+}
+
+public enum SyncRenderMode
+{
+    /// <summary>Lettres P / L / S sur fond sarcelle.</summary>
+    Letters,
+    /// <summary>Pictogramme « sync » coloré selon le type le plus fort.</summary>
+    Color
 }
 
 public class GroupConfig

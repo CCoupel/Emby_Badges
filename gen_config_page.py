@@ -97,6 +97,25 @@ RATING_BADGES = (
     '<span class="eb-text-badge eb-rating">7.8</span><span>Note du média (0–10)</span></label>'
 )
 
+SYNC_BADGES = (
+    '<label class="eb-toggle"><input type="checkbox" id="ShowSync" />'
+    '<span class="eb-text-badge eb-sync">PLS</span><span>Activer le badge (média dans une playlist partagée PlaySync)</span></label>'
+    '<label class="eb-toggle"><input type="checkbox" id="ShowSyncPosition" />'
+    '<span class="eb-text-badge eb-sync">P</span><span>Position (propager-avancement)</span></label>'
+    '<label class="eb-toggle"><input type="checkbox" id="ShowSyncRead" />'
+    '<span class="eb-text-badge eb-sync">L</span><span>Lu (propager-lu)</span></label>'
+    '<label class="eb-toggle"><input type="checkbox" id="ShowSyncRemoved" />'
+    '<span class="eb-text-badge eb-sync">S</span><span>Supprimé (remove-si-lu, avec propager-lu)</span></label>'
+    '<div class="inputContainer" style="margin-top:8px;width:100%">'
+    '<label class="inputLabel inputLabelUnfocused">Mode de rendu</label>'
+    '<select id="SyncRenderMode" is="emby-select" class="emby-select-withcolor emby-input">'
+    '<option value="Letters">Lettres (P / L / S)</option>'
+    '<option value="Color">Pictogramme coloré (rouge = supprimé, orange = lu, vert = position)</option>'
+    '</select>'
+    '<div class="fieldDescription">Lettres\u00a0: un badge sarcelle listant les types actifs. Pictogramme\u00a0: couleur du type le plus fort.</div>'
+    '</div>'
+)
+
 TMDB_SECTION = (
     '<div class="inputContainer">'
     '<label class="inputLabel inputLabelUnfocused">Clé API TMDB (optionnelle)</label>'
@@ -143,6 +162,7 @@ HTML = f"""<div is="emby-scroller" class="view flex flex-direction-column scroll
           background:rgba(30,100,180,0.8); color:#fff; font-weight:bold; font-size:0.9em; }}
         .eb-multi {{ background:rgba(180,90,0,0.8); }}
         .eb-rating {{ background:rgba(170,130,0,0.8); }}
+        .eb-sync {{ background:rgba(0,120,140,0.8); }}
         .eb-heart {{ display:inline-block; color:#dc1e3c; font-size:1.4em;
           line-height:1; vertical-align:middle; margin-right:2px; }}
         .eb-toggle {{ display:inline-flex; align-items:center; gap:6px;
@@ -215,6 +235,13 @@ HTML = f"""<div is="emby-scroller" class="view flex flex-direction-column scroll
         {group_settings("Rating")}
       </div>
 
+      <!-- Synchro (PlaySync) -->
+      <div class="detailSection">
+        <div class="detailSectionHeader">Synchro (PlaySync)</div>
+        <div class="eb-toggles">{SYNC_BADGES}</div>
+        {group_settings("Sync")}
+      </div>
+
       <div style="margin-top:1.5em">
         <button id="BtnSave" is="emby-button" class="raised emby-button">
           <span>Enregistrer</span>
@@ -262,8 +289,13 @@ define([], function () {{
       setSelect('MultiVersionTrigger', cfg.MultiVersionTrigger || 'MultiVersionOnly');
       view.querySelector('#ShowFavorites').checked = !!cfg.ShowFavorites;
       view.querySelector('#ShowRating').checked = cfg.ShowRating !== false;
+      view.querySelector('#ShowSync').checked = cfg.ShowSync !== false;
+      view.querySelector('#ShowSyncPosition').checked = cfg.ShowSyncPosition !== false;
+      view.querySelector('#ShowSyncRead').checked = cfg.ShowSyncRead !== false;
+      view.querySelector('#ShowSyncRemoved').checked = cfg.ShowSyncRemoved !== false;
+      setSelect('SyncRenderMode', cfg.SyncRenderMode || 'Letters');
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating'].forEach(function (g) {{
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync'].forEach(function (g) {{
                     var gc = cfg[g] || {{}};
                     setSelect(g + '_Position', gc.Position || 'BottomLeft');
                     view.querySelector('#' + g + '_SizePercent').value   = gc.SizePercent   != null ? gc.SizePercent   : 8;
@@ -292,8 +324,13 @@ define([], function () {{
       cfg.MultiVersionTrigger  = view.querySelector('#MultiVersionTrigger').value;
       cfg.ShowFavorites = view.querySelector('#ShowFavorites').checked;
       cfg.ShowRating = view.querySelector('#ShowRating').checked;
+      cfg.ShowSync = view.querySelector('#ShowSync').checked;
+      cfg.ShowSyncPosition = view.querySelector('#ShowSyncPosition').checked;
+      cfg.ShowSyncRead = view.querySelector('#ShowSyncRead').checked;
+      cfg.ShowSyncRemoved = view.querySelector('#ShowSyncRemoved').checked;
+      cfg.SyncRenderMode = view.querySelector('#SyncRenderMode').value;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating'].forEach(function (g) {{
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync'].forEach(function (g) {{
                     cfg[g] = {{
                         Position:      view.querySelector('#' + g + '_Position').value,
                         SizePercent:   parseFloat(view.querySelector('#' + g + '_SizePercent').value),
