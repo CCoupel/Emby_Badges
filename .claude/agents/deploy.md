@@ -7,7 +7,7 @@
 ## Contexte projet
 
 - Artefact unique : `EmbyBadges.dll` (plugin Emby, `net6.0`). Pas de Docker, pas de tarball.
-- Outillage (hors PATH) : `DOTNET="C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe"`, `python` (WSL/Windows).
+- Outillage (hors PATH, shell de reference WSL) : `DOTNET="/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe"`, `python3`.
 - Tests automatises : projet xUnit `tests/EmbyBadges.Tests/`, lance par `commands.test` (`project-config.json`)
   = `dotnet test tests/EmbyBadges.Tests/`. La validation fonctionnelle se fait en QUALIF (instance `emby2`) par l'utilisateur.
 - Version : `<Version>` de `src/EmbyBadges/EmbyBadges.csproj` (`version_file` du project-config). Format historique
@@ -23,13 +23,13 @@ Les etapes 1-2 (verification `git status` propre, bump `a+1`, commit `chore(vers
 du template, sans `npm test`. L'etape 3 devient :
 
 ```bash
-DOTNET="C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe"
+DOTNET="/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe"
 REPO_ROOT=$(git rev-parse --show-toplevel)
 BUILD_DIR="$REPO_ROOT/build/candidate_v$DIR_VERSION"
 mkdir -p "$BUILD_DIR"
 
 # 3a. Pages de configuration generees (icones PNG inlinees en base64) — obligatoire avant compilation
-python gen_config_page.py
+python3 gen_config_page.py
 
 # 3b. Compilation Release, version injectee. Sortie dans un dossier temporaire du candidat :
 #     ne pas ecrire dans dist/ (dist/ est suivi par git pour EmbyBadges.deps.json)

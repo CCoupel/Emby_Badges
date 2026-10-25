@@ -52,7 +52,8 @@
       "WebFetch(domain:www.themoviedb.org)",
       "WebFetch(domain:api.themoviedb.org)",
       "Bash(cd \"C:/Users/cyril/Documents/VScode/GITHUB/Emby_Badges\" && python gen_config_page.py && \"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe\" build src/EmbyBadges/EmbyBadges.csproj --configuration Release --output dist/ 2>&1 | tail -3)",
-      "Bash(cd \"C:/Users/cyril/Documents/VScode/GITHUB/Emby_Badges\" && \"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe\" build src/EmbyBadges/EmbyBadges.csproj --configuration Release --output dist/ 2>&1 | tail -3)"
+      "Bash(cd \"C:/Users/cyril/Documents/VScode/GITHUB/Emby_Badges\" && \"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe\" build src/EmbyBadges/EmbyBadges.csproj --configuration Release --output dist/ 2>&1 | tail -3)",
+      "Bash(cd \"C:/Users/cyril/Documents/VScode/GITHUB/Emby_Badges\" && export KUBECONFIG=private/kubeconfig.yml && kubectl get pods -n media --no-headers | grep emby)"
     ]
   }
 }

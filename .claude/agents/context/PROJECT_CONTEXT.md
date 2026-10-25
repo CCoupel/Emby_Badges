@@ -21,7 +21,7 @@
 
 - CI : `commands.ci` = `bash scripts/ci.sh` (mêmes étapes que le build, + contrôle de `dist/EmbyBadges.dll`) ; pré-validation `.github/workflows/ci-branch.yml`.
 - Build : `commands.build` de `.claude/project-config.json` (`gen_config_page.py` puis `dotnet build` Release).
-- Tests automatisés : aucun (`commands.test` vide). Validation fonctionnelle en QUALIF (`emby2`) par l'utilisateur.
+- Tests automatisés : projet xUnit `tests/EmbyBadges.Tests/` (logique pure), lancé par `commands.test`. Validation fonctionnelle en QUALIF (`emby2`) par l'utilisateur.
 - Version : `<Version>` de `src/EmbyBadges/EmbyBadges.csproj` ; tag `vX.Y.Z` = csproj (contrôlé par la CI).
 - Déploiement : `/build` → `/publish qualif` → `/deploy qualif` (→ `/publish prod` → `/deploy prod`, sur ordre explicite).
   Procédures : `.claude/agents/deploy.md` et `.claude/agents/environments/`.

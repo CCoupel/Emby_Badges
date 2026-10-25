@@ -26,13 +26,13 @@ Each badge group (Resolution, Language, MultiVersion, Favorites, Rating, Synchro
 ## Build
 
 ```bash
-"C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe" build \
+"/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe" build \
   src/EmbyBadges/EmbyBadges.csproj \
   --configuration Release \
   --output dist/
 ```
 
-Under WSL use `python3` and `/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe` (the `C:/...` paths only work on Git Bash/Windows).
+Reference shell is WSL (`python3`, `/mnt/c/...` paths), as in `commands.*` of `.claude/project-config.json`. On Git Bash/Windows use `python` and `C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe` instead.
 
 **CI script:** `bash scripts/ci.sh` (`commands.ci`) runs `gen_config_page.py` + Release build and checks `dist/EmbyBadges.dll`; it auto-detects the user-level `dotnet` (override with `DOTNET=`). `.github/workflows/ci-branch.yml` runs it on `milestone/**` pushes and `workflow_dispatch` (pre-validation, read-only, no publish) — it is the barrier checked before `/publish prod`. `release.yml` still has its own steps (deferred gap: not yet reduced to `run: bash scripts/ci.sh`).
 
@@ -43,7 +43,7 @@ Produces `dist/EmbyBadges.dll`. Official process: `/build` (candidate) → `/pub
 `configPage.html` and `configScript.js` are generated from `gen_config_page.py` (which inlines icon PNGs as base64):
 
 ```bash
-python gen_config_page.py
+python3 gen_config_page.py
 ```
 
 Must be run before building when the config page changes.
