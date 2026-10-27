@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="current-major" content="1">
 <title>Emby Badges</title>
-<meta name="description" content="Plugin Emby : badges de résolution, langue, versions et favoris sur vos affiches.">
+<meta name="description" content="Plugin Emby : badges de résolution, langue, versions, favoris, synchro et playlists sur vos affiches.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Figtree:wght@400;600;800&display=swap">
 <link rel="stylesheet" href="assets/style.css">
@@ -13,7 +13,7 @@
 <body>
 <div class="wrap">
 <header class="top">
-  <div class="brand">Emby Badges <span class="ver">v1.2.0</span></div>
+  <div class="brand">Emby Badges <span class="ver">v1.4.0</span></div>
   <nav>
     <a href="#problems" data-i18n="nav.problems">Le souci</a>
     <a href="#solutions" data-i18n="nav.solutions">Les badges</a>
@@ -55,6 +55,8 @@
     <div class="card"><span class="chip">FR · EN · JP · VO</span><h3 data-i18n="sol.lang.t">Langue audio</h3><p data-i18n="sol.lang.p"></p></div>
     <div class="card"><span class="chip">MULTI</span><h3 data-i18n="sol.multi.t">Versions multiples</h3><p data-i18n="sol.multi.p"></p></div>
     <div class="card"><span class="chip">♥</span><h3 data-i18n="sol.fav.t">Favoris</h3><p data-i18n="sol.fav.p"></p></div>
+    <div class="card"><span class="chip">P · L · S</span><h3 data-i18n="sol.sync.t">Synchro PlaySync</h3><p data-i18n="sol.sync.p"></p></div>
+    <div class="card"><span class="chip">12/30</span><h3 data-i18n="sol.pl.t">Playlists</h3><p data-i18n="sol.pl.p"></p></div>
     <div class="card"><span class="chip">8 positions</span><h3 data-i18n="sol.cfg.t">Tout se règle</h3><p data-i18n="sol.cfg.p"></p></div>
   </div>
   <div class="grid news" style="margin-top:20px">
@@ -63,8 +65,13 @@
   </div>
   <img class="shot" src="assets/config-page.webp" width="1400" height="726" loading="lazy" alt="Page de configuration du plugin : sections Résolution et Langue audio">
 
-  <h2 style="margin-top:48px" data-i18n="new.title">Quoi de neuf dans la 1.2.0</h2>
+  <h2 style="margin-top:48px" data-i18n="new.title">Quoi de neuf</h2>
   <div class="grid news n">
+    <div class="card"><h3><span data-i18n="new.pshare.t">Playlists partagées</span><span class="badge" data-badge-version="v1.4.0"></span></h3><p data-i18n="new.pshare.p"></p><img class="shot narrow" src="assets/playlist-shared.webp" width="528" height="534" loading="lazy" alt="Vignette de playlist partagée : pictogramme de synchronisation en haut à gauche et compteur 1/2"></div>
+    <div class="card"><h3><span data-i18n="new.pprog.t">Progression de playlist</span><span class="badge" data-badge-version="v1.4.0"></span></h3><p data-i18n="new.pprog.p"></p><img class="shot narrow" src="assets/playlist-progress.webp" width="376" height="504" loading="lazy" alt="Compteur de progression 1/2 sur la vignette d'une playlist"></div>
+    <div class="card"><h3><span data-i18n="new.pfav.t">Favoris sur les playlists</span><span class="badge" data-badge-version="v1.4.0"></span></h3><p data-i18n="new.pfav.p"></p></div>
+    <div class="card"><h3><span data-i18n="new.sync.t">Le badge Synchro</span><span class="badge" data-badge-version="v1.3.0"></span></h3><p data-i18n="new.sync.p"></p></div>
+
     <div class="card"><h3><span data-i18n="new.rating.t">La note, en un badge</span><span class="badge" data-badge-version="v1.2.0"></span></h3><p data-i18n="new.rating.p"></p><img class="shot narrow" src="assets/rating-badge.webp" width="360" height="520" loading="lazy" alt="Affiche avec la note 7.9"></div>
     <div class="card"><h3><span data-i18n="new.series.t">Séries et saisons aussi</span><span class="badge" data-badge-version="v1.2.0"></span></h3><p data-i18n="new.series.p"></p><img class="shot" src="assets/series-episodes.webp" width="1267" height="208" loading="lazy" alt="Vignettes d'épisodes de série avec badges 1080, français, japonais et note"></div>
     <div class="card wide"><h3><span data-i18n="new.backdrop.t">Vignettes paysage badgées</span><span class="badge" data-badge-version="v1.2.0"></span></h3><p data-i18n="new.backdrop.p"></p><img class="shot" src="assets/backdrop-badges.webp" width="1410" height="218" loading="lazy" alt="Vignettes paysage d'épisodes avec badges dans Reprendre la lecture"></div>
@@ -97,7 +104,7 @@ dotnet build src/EmbyBadges/EmbyBadges.csproj --configuration Release --output d
 # copier dist/EmbyBadges.dll dans plugins/ (racine) puis redémarrer Emby</pre></details>
 </section>
 </main>
-<footer><span data-i18n="foot">Projet open source, fait pour les gens qui aiment leur médiathèque. Version</span> v1.2.0 · <a href="https://github.com/CCoupel/Emby_Badges">GitHub</a></footer>
+<footer><span data-i18n="foot">Projet open source, fait pour les gens qui aiment leur médiathèque. Version</span> v1.4.0 · <a href="https://github.com/CCoupel/Emby_Badges">GitHub</a></footer>
 </div>
 <script src="assets/badges.js"></script>
 <script src="assets/lang.js"></script>
