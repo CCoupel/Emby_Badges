@@ -6,8 +6,8 @@
 
 ## Qualité avant publication
 
-- **LOT-1 (partage et favori)** : revue de code approuvée après correctifs des réserves ; QA validée (99/99 tests) ; CI de branche verte ; déployée sur QUALIF 1.4.0.2, chargement sans erreur. Validation visuelle sur QUALIF : à confirmer.
-- **LOT-2 (progression)** : revue de code approuvée (les observations mineures ne bloquent pas) ; tests unitaires 131/131 ; QA validée avec réserves sur la procédure de validation manuelle, à compléter avant l'exécution par l'utilisateur. Déploiement QUALIF 1.4.0.3 : à faire.
+- **LOT-1 (partage et favori)** : revue de code approuvée après correctifs des réserves ; QA validée (99/99 tests) ; CI de branche verte ; validée par l'utilisateur sur QUALIF 1.4.0.2 (sans exécution de la procédure détaillée). Point ouvert : « collage automatique » non vérifié.
+- **LOT-2 (progression)** : revue de code approuvée (les observations mineures ne bloquent pas) ; tests unitaires 131/131 ; QA validée (réserve sur la procédure levée, e20c809) ; CI en cours ; déploiement QUALIF 1.4.0.3 à faire.
 
 ## Nouveautés
 
