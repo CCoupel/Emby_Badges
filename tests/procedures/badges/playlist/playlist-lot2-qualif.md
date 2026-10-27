@@ -16,6 +16,7 @@
   - `PL-NP` **non partagée**, contenant `F1`, `F2` (U1 a vu `F1`)
   - `PL-DUP` partagée, contenant `F1` **deux fois** et `F3`
   - `PL-SER` contenant la série `SER` (3 épisodes ; U1 en a vu 1) et `F4`
+  - `PL-MANQ` contenant une série `SER-M` avec des épisodes **manquants** ou **non diffusés** (au moins 1 de chaque si possible) + `F4`
   - `PL-VIDE` playlist vide
   - `PL-ALL` contenant uniquement des médias entièrement vus par U1
   - `PL-RM` partagée, `remove-si-lu=OUI` + `propager-lu=OUI`, contenant `F5` non vu
@@ -42,6 +43,20 @@ Puis rechargement forcé du client web (Ctrl+F5). Les lectures de log servent à
 
 ## Scénarios
 
+### CA11-pré — Entry point d'événements actif au démarrage (prérequis de CA11/CA12)
+
+**Validation** : AUTO — **Issues** : #6 (lecture de log, aucun jugement humain)
+
+| Etape | Action | Résultat Attendu | Résultat Obtenu | OK ? |
+|-------|--------|-----------------|----------------|------|
+| 1 | Journal Debug serveur actif, redémarrer le pod `emby2` | — | | |
+| 2 | `kubectl logs -n media deployment/emby2 \| grep "PlaylistEventsEntryPoint"` | Ligne `EmbyBadges: PlaylistEventsEntryPoint actif (abonnements posés)` présente | | |
+| 3 | `kubectl logs -n media deployment/emby2 \| grep -i "EmbyBadges" \| grep -i "warn"` | Aucun Warn d'injection de dépendances (`IPlaylistManager`, `IUserDataManager`, `IServerEntryPoint`) | | |
+
+**Verdict** : [ ] PASS  [ ] FAIL — Si la ligne est absente, CA11 et CA12 ne sont pas évaluables : arrêter et remonter.
+
+---
+
 ### CA8 — Badge « lus/total » du propriétaire, identique pour tous
 
 **Validation** : HUMAIN — **Issues** : #6
@@ -65,9 +80,10 @@ Puis rechargement forcé du client web (Ctrl+F5). Les lectures de log servent à
 | 1 | Observer `PL-DUP` (`F1` en double + `F3`) | **1/2** : le doublon compte une fois | | |
 | 2 | Observer `PL-SER` (série de 3 épisodes dont 1 vu + `F4`) | **1/4** : la série compte pour ses 3 épisodes | | |
 | 3 | Observer `PL-VIDE` | Aucun badge de progression | | |
-| 4 | Playlist sans propriétaire (ex. playlist dont la ligne de partage propriétaire a été supprimée, si réalisable) | Ni progression ni pictogramme de partage | | |
+| 4 | Observer `PL-MANQ` (série `SER-M` dont certains épisodes sont **manquants** ou **non diffusés** : épisodes virtuels / date de diffusion future, + `F4`) | Le total ne compte que les épisodes réels (filtre `IsVirtualItem=false` et `IsUnaired=false`) : ex. 3 épisodes réels + 2 manquants/non diffusés + `F4` → total **4**, pas 6 | | |
+| 5 | Playlist sans propriétaire (ex. playlist dont la ligne de partage propriétaire a été supprimée, si réalisable) | Ni progression ni pictogramme de partage | | |
 
-**Verdict** : [ ] PASS  [ ] FAIL — Étape 4 : [ ] réalisée  [ ] non réalisable (noter pourquoi)
+**Verdict** : [ ] PASS  [ ] FAIL — Étape 5 : [ ] réalisée  [ ] non réalisable (noter pourquoi)
 
 ---
 
@@ -90,12 +106,19 @@ Puis rechargement forcé du client web (Ctrl+F5). Les lectures de log servent à
 
 **Validation** : HUMAIN — **Issues** : #6 (mesure par log + rendu)
 
+**Latence attendue : « ≥ 30 s puis 2 affichages de la vignette »** (reconstruction paresseuse). L'événement ne
+fait que marquer l'index « dirty » ; la reconstruction n'est lancée que lorsqu'une vignette est demandée
+**et** que 30 s se sont écoulées. Donc : (a) attendre **≥ 30 s** après l'action ; (b) un **premier affichage** de la
+vignette déclenche la reconstruction en tâche de fond et sert encore l'ancienne valeur (ancien instantané) ;
+(c) un **second affichage**, après la fin de la reconstruction (ligne de log), montre la nouvelle valeur. Sans
+affichage de vignette, aucune ligne `SyncIndex reconstruit` n'apparaît : ce n'est pas un défaut.
+
 Pour chaque événement : relever l'heure `T0` de l'action, puis l'heure de la ligne `SyncIndex reconstruit` suivante.
-Attendu : reconstruction dans les ~30 s de debounce + durée de reconstruction (≤ ~1 min au total), sans attendre les 5 min.
+Attendu : après ≥ 30 s et un premier affichage de la vignette, reconstruction (≤ ~1 min au total), sans attendre les 5 min ; la valeur à jour apparaît au second affichage (avec purge `.jpg`+`.webp`).
 
 | Etape | Action (en `U1`) | Résultat Attendu | Résultat Obtenu (heure log, Δ) | OK ? |
 |-------|-----------------|-----------------|-------------------------------|------|
-| 1 | Lire un média de `PL-P` **jusqu'à la fin** (fin de lecture) | Ligne `SyncIndex reconstruit` ≤ ~1 min ; compteur +1 après purge | | |
+| 1 | Lire un média de `PL-P` **jusqu'à la fin** (fin de lecture) | Après ≥ 30 s : ouvrir la page Playlists (1er affichage), ligne `SyncIndex reconstruit` ; purger, rouvrir (2e affichage) : compteur +1 | | |
 | 2 | Marquer un média de `PL-P` **lu**, puis **non lu** (deux actions espacées de > 1 min) | Une reconstruction ≤ ~1 min après chaque action | | |
 | 3 | Ajouter un média à `PL-P` | Reconstruction ≤ ~1 min ; total +1 | | |
 | 4 | Retirer un média de `PL-P` | Reconstruction ≤ ~1 min ; total −1 | | |
