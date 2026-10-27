@@ -62,6 +62,16 @@ public class BadgeRenderer
     {
         var list = new List<BadgeItem>();
 
+        // Playlist : uniquement partage + Favoris (pas de note, résolution, langue ni version).
+        if (mediaInfo.IsPlaylist)
+        {
+            if (config.ShowPlaylistShare && mediaInfo.PlaylistShared)
+                list.Add(new SyncBadge(ShareColorOf(mediaInfo.PlaylistSyncTypes), config.PlaylistShare));
+            if (config.ShowFavorites && mediaInfo.IsFavorite)
+                list.Add(new HeartBadge(ColorFavorite, config.Favorites));
+            return list;
+        }
+
         // Résolution (toutes les versions, dédupliquées)
         TryAddPng(list, mediaInfo.ResolutionIcons, config.ShowSd,     config.Resolution, "res_480p");
         TryAddPng(list, mediaInfo.ResolutionIcons, config.ShowHd,     config.Resolution, "res_720p");
@@ -143,6 +153,10 @@ public class BadgeRenderer
          + (t.HasFlag(SyncTypes.Removed)  ? "S" : "");
 
     /// <summary>Couleur du type le plus fort : Removed (rouge) > Read (orange) > Position (vert).</summary>
+    /// <summary>Couleur du pictogramme « playlist partagée » : sarcelle sans étiquette active, sinon <see cref="ColorOf"/>.</summary>
+    internal static SKColor ShareColorOf(SyncTypes t)
+        => t == SyncTypes.None ? ColorSync : ColorOf(t);
+
     internal static SKColor ColorOf(SyncTypes t)
         => t.HasFlag(SyncTypes.Removed) ? ColorSyncRemoved
          : t.HasFlag(SyncTypes.Read)    ? ColorSyncRead

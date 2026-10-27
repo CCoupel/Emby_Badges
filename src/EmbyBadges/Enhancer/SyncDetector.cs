@@ -51,9 +51,19 @@ public class SyncDetector
 
     private readonly object _buildLock = new();
     private int _rebuilding;
-    private volatile Snapshot _snapshot = new(DateTime.MinValue, new Dictionary<long, SyncTypes>());
+    private volatile Snapshot _snapshot = new(DateTime.MinValue, new Dictionary<long, SyncTypes>(), new Dictionary<long, PlaylistInfo>());
 
-    private sealed record Snapshot(DateTime At, Dictionary<long, SyncTypes> Map);
+    /// <summary>Instantané de l'index : <c>Map</c> = table des médias (v1.3.0, inchangée), <c>Playlists</c> = infos par playlist.</summary>
+    private sealed record Snapshot(DateTime At, Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists);
+
+    /// <summary>Résultat d'une passe de construction.</summary>
+    private sealed record BuildResult(Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists);
+
+    /// <summary>Infos d'une playlist (LOT-1 : partage ; la progression Played/Total reste à 0 jusqu'au LOT-2).</summary>
+    internal sealed record PlaylistInfo(bool IsShared, long? OwnerId, SyncTypes OwnTypes, int Played, int Total)
+    {
+        internal static readonly PlaylistInfo Neutral = new(false, null, SyncTypes.None, 0, 0);
+    }
 
     public SyncDetector(ILibraryManager libraryManager, IUserManager userManager, IItemRepository? itemRepository, ILogger logger)
     {
@@ -110,6 +120,20 @@ public class SyncDetector
         return owner != null && members.Any(m => m != owner.Value);
     }
 
+    /// <summary>Propriétaire = première ligne de partage de niveau ManageDelete ; <c>null</c> si introuvable.</summary>
+    internal static long? OwnerOf(IEnumerable<UserItemShare>? rows)
+    {
+        if (rows == null) return null;
+        foreach (var r in rows)
+            if ((r.ShareLevel ?? UserItemShareLevel.None) == UserItemShareLevel.ManageDelete)
+                return r.UserId;
+        return null;
+    }
+
+    /// <summary>L'index n'est construit que si au moins un des badges qui s'en servent est actif (CA6).</summary>
+    internal static bool IndexNeeded(PluginConfiguration config)
+        => config.ShowSync || config.ShowPlaylistShare || config.ShowPlaylistProgress;
+
     // ── Index ────────────────────────────────────────────────────────────────
 
     /// <summary>Types de synchro d'un item (film, épisode, saison, série). <c>None</c> si inconnu.</summary>
@@ -118,6 +142,23 @@ public class SyncDetector
         var config = Plugin.Instance?.Configuration;
         if (config is null || !config.ShowSync) return SyncTypes.None; // CA11 : aucun coût
 
+        var snap = EnsureSnapshot();
+        return snap.Map.TryGetValue(internalId, out var t) ? t : SyncTypes.None;
+    }
+
+    /// <summary>Infos d'une playlist (partage, propriétaire, étiquettes propres). Neutre si inconnue ou index inutile.</summary>
+    internal PlaylistInfo GetPlaylistInfo(long internalId)
+    {
+        var config = Plugin.Instance?.Configuration;
+        if (config is null || !IndexNeeded(config)) return PlaylistInfo.Neutral;
+
+        var snap = EnsureSnapshot();
+        return snap.Playlists.TryGetValue(internalId, out var p) ? p : PlaylistInfo.Neutral;
+    }
+
+    /// <summary>Renvoie l'instantané courant ; déclenche le premier build (bloquant) ou la reconstruction en tâche de fond.</summary>
+    private Snapshot EnsureSnapshot()
+    {
         var snap = _snapshot;
         if (DateTime.UtcNow - snap.At >= SyncIndexTtl)
         {
@@ -146,7 +187,7 @@ public class SyncDetector
                 });
             }
         }
-        return snap.Map.TryGetValue(internalId, out var t) ? t : SyncTypes.None;
+        return snap;
     }
 
     private Snapshot Rebuild(Snapshot previous)
@@ -154,55 +195,63 @@ public class SyncDetector
         try
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            var map = BuildMap();
-            var fresh = new Snapshot(DateTime.UtcNow, map);
+            var built = BuildMap();
+            var fresh = new Snapshot(DateTime.UtcNow, built.Map, built.Playlists);
             _snapshot = fresh;
-            _logger.Debug("SyncIndex reconstruit : {0} items, {1} ms", map.Count, sw.ElapsedMilliseconds);
+            _logger.Debug("SyncIndex reconstruit : {0} items, {1} playlists, {2} ms", built.Map.Count, built.Playlists.Count, sw.ElapsedMilliseconds);
             return fresh;
         }
         catch (Exception ex)
         {
             _logger.Warn("SyncIndex : échec de la reconstruction ({0}) — index précédent conservé", ex.Message);
             // On repousse l'échéance pour ne pas retenter à chaque appel.
-            var kept = new Snapshot(DateTime.UtcNow, previous.Map);
+            var kept = new Snapshot(DateTime.UtcNow, previous.Map, previous.Playlists);
             _snapshot = kept;
             return kept;
         }
     }
 
-    private Dictionary<long, SyncTypes> BuildMap()
+    private BuildResult BuildMap()
     {
         var map = new Dictionary<long, SyncTypes>();
-        if (_itemRepository == null) return map;
+        var infos = new Dictionary<long, PlaylistInfo>();
+        var result = new BuildResult(map, infos);
+        if (_itemRepository == null) return result;
+
+        var config = Plugin.Instance?.Configuration;
+        bool wantItems = config?.ShowSync ?? false; // table Items : badge Synchro des médias (v1.3.0)
 
         var playlists = _libraryManager
             .GetItemList(new InternalItemsQuery { IncludeItemTypes = new[] { "Playlist" }, Recursive = true })
             .OfType<Playlist>()
-            .Select(p => (playlist: p, types: EvaluateTags(p.Tags)))
-            .Where(x => x.types != SyncTypes.None)
             .ToList();
-        if (playlists.Count == 0) return map;
+        if (playlists.Count == 0) return result;
 
+        // Une seule requête de partages pour toutes les playlists.
         var rows = _itemRepository
-            .GetUserItemShares(new UserItemShareQuery { ItemIds = playlists.Select(x => x.playlist.InternalId).ToArray() }, CancellationToken.None)
+            .GetUserItemShares(new UserItemShareQuery { ItemIds = playlists.Select(p => p.InternalId).ToArray() }, CancellationToken.None)
             .ToLookup(r => r.ItemId);
 
-        foreach (var (playlist, types) in playlists)
+        foreach (var playlist in playlists)
         {
             try
             {
                 var shareRows = rows[playlist.InternalId].ToList();
-                if (!IsShared(shareRows)) continue;
+                var own = EvaluateTags(playlist.Tags);
+                var shared = IsShared(shareRows);
+                infos[playlist.InternalId] = new PlaylistInfo(shared, OwnerOf(shareRows), own, 0, 0);
 
-                foreach (var child in ReadChildren(playlist, shareRows))
-                    Add(map, child, types);
+                // Table Items : playlist partagée ET étiquetée, seulement si ShowSync (inchangé vs v1.3.0).
+                if (wantItems && own != SyncTypes.None && shared)
+                    foreach (var child in ReadChildren(playlist, shareRows))
+                        Add(map, child, own);
             }
             catch (Exception ex)
             {
                 _logger.Warn("SyncIndex : playlist « {0} » ignorée ({1})", playlist.Name, ex.Message);
             }
         }
-        return map;
+        return result;
     }
 
     private static void Add(Dictionary<long, SyncTypes> map, BaseItem child, SyncTypes types)

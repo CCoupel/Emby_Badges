@@ -96,10 +96,12 @@ public class BadgeEnhancer : IImageEnhancer
             GC(config.Favorites),
             GC(config.Rating),
             GC(config.Sync),
+            GC(config.PlaylistShare),
             config.ShowSd, config.ShowHd, config.ShowFullHd, config.Show4K,
             config.ShowFrench, config.ShowEnglish, config.ShowJapanese, config.ShowVo, config.ShowMulti,
             config.MultiVersionTrigger, config.ShowFavorites, config.ShowRating, config.HighlightOriginalLanguage,
             config.ShowSync, config.SyncRenderMode, config.ShowSyncPosition, config.ShowSyncRead, config.ShowSyncRemoved,
+            config.ShowPlaylistShare,
             !string.IsNullOrEmpty(config.TmdbApiKey),
             config.DebugMode,
             string.Join(",", mediaInfo.ResolutionIcons),
@@ -111,7 +113,10 @@ public class BadgeEnhancer : IImageEnhancer
             mediaInfo.IsFromVirtualLib,
             mediaInfo.IsFavorite,
             mediaInfo.Rating,
-            (int)mediaInfo.SyncTypes
+            (int)mediaInfo.SyncTypes,
+            mediaInfo.IsPlaylist,
+            mediaInfo.PlaylistShared,
+            (int)mediaInfo.PlaylistSyncTypes
         );
     }
 
