@@ -100,3 +100,122 @@ Ajouts à la clé existante (même `string.Join("_", …)`) :
 - Conséquence : un changement d'appartenance / d'étiquette est visible au plus **5 min** après (puis cache images
   Emby : clé changée → `enhanced-images` régénéré ; `resized-images` reste soumis à la limitation connue).
 - PlaySync absent ou aucune playlist étiquetée : index vide, `SyncTypes.None` partout, aucun badge.
+
+---
+
+## Badges de playlist : partage (#5) et progression (#6), v1.4.0
+
+> Décisions utilisateur du 2026-10-27 (GATE 1.5) : badges dessinés sur les vignettes des items `Playlist` ;
+> progression selon le **propriétaire** ; pictogramme Synchro coloré selon les étiquettes de la playlist (sarcelle sans
+> étiquette active) ; texte « lus/total » ; toutes les playlists ayant un propriétaire ; mise à jour sur événement (~30 s).
+> Maquette : `_work/mockup/v1.4.0/ui/badge_playlist__indicateurs.html`. GATE 2 (2026-10-27) : H1 et H2 acceptées ;
+> **H3 amendée** : le badge Favoris s'affiche aussi sur les playlists, la Note reste exclue.
+
+### 7. Source de vérité (ajouts à §1)
+
+| Donnée | Où | Comment la lire |
+|---|---|---|
+| Propriétaire d'une playlist | première ligne `ShareLevel == ManageDelete` de `GetUserItemShares` | `SyncDetector.OwnerOf(rows)` ; aucune ligne → `null` (« propriétaire introuvable ») |
+| Playlist partagée | `SyncDetector.IsShared(rows)` (inchangé, §1) | appliqué à **toutes** les playlists, étiquetées ou non |
+| Étiquettes propres | `SyncDetector.EvaluateTags(playlist.Tags)` (inchangé) | état effectif, H3 v1.3.0 |
+| Contenu | `ReadChildren` (inchangé, §6) | les entrées dossier (`Series`, `Season`, `Folder`) sont développées en leurs médias non-dossier (lecture avec l'utilisateur propriétaire) |
+| Lu | `IUserDataManager.GetUserData(owner, media).Played` | propriétaire uniquement, jamais l'utilisateur courant (cache global) |
+
+### 8. Modèle `PlaylistInfo` (C#, `EmbyBadges.Enhancer`, interne à l'index)
+
+```csharp
+internal sealed record PlaylistInfo(
+    bool      IsShared,    // IsShared(rows)
+    long?     OwnerId,     // OwnerOf(rows) ; null = propriétaire introuvable
+    SyncTypes OwnTypes,    // EvaluateTags(playlist.Tags), indépendant du partage
+    int       Played,      // médias lus par le propriétaire (0 si OwnerId == null)
+    int       Total);      // médias lisibles (0 si OwnerId == null)
+```
+
+Règles :
+- `OwnerId == null` → `IsShared == false` (déjà vrai par définition) et **aucune** progression (`Total = 0`).
+- `Total = 0` → pas de badge de progression (playlist vide, ou contenu illisible).
+- Un même média présent deux fois dans la playlist compte **une fois** (dédoublonnage par `InternalId`).
+- Les médias d'une entrée dossier comptent individuellement (une série de 10 épisodes compte pour 10).
+
+### 9. `MediaInfo`, nouveaux champs (rétrocompatibles, défauts neutres pour tout item non-Playlist)
+
+| Champ | Type | Défaut | Valeur pour une `Playlist` |
+|---|---|---|---|
+| `IsPlaylist` | `bool` | `false` | `true` |
+| `PlaylistShared` | `bool` | `false` | `PlaylistInfo.IsShared` |
+| `PlaylistSyncTypes` | `SyncTypes` | `None` | `PlaylistInfo.OwnTypes` |
+| `PlaylistPlayed` | `int` | `0` | `PlaylistInfo.Played` |
+| `PlaylistTotal` | `int` | `0` | `PlaylistInfo.Total` |
+
+Pour une `Playlist`, le champ existant **`IsFavorite`** est aussi rempli, par la même règle que les médias
+(`DetectFavorite` : premier utilisateur, `userManager.Users.FirstOrDefault()`). **Aucun autre champ n'est rempli** :
+résolution, langue, versions, note (`Rating = null`) et `SyncTypes` restent vides. La playlist porte donc les badges de
+playlist et le badge Favoris (H3 amendée au GATE 2).
+
+### 10. Configuration (`PluginConfiguration`), ajouts
+
+| Champ | Type | Défaut | Rôle |
+|---|---|---|---|
+| `PlaylistShare` | `GroupConfig` | `Position = TopLeft` | position / taille / marge / opacité de l'indicateur de partage |
+| `ShowPlaylistShare` | `bool` | `true` | activation de l'indicateur de partage |
+| `PlaylistProgress` | `GroupConfig` | `Position = BottomRight` | position / taille / marge / opacité de la progression |
+| `ShowPlaylistProgress` | `bool` | `true` | activation de la progression |
+
+Page de config (`gen_config_page.py`) : deux sections « Playlist partagée » et « Progression de playlist » après
+« Synchro (PlaySync) », listes de groupes JS étendues à `'PlaylistShare', 'PlaylistProgress'`.
+
+### 11. Rendu
+
+- **Partage** : `ShowPlaylistShare && PlaylistShared` → un `SyncBadge` (pictogramme vectoriel existant, carré `h×h`),
+  fond = `ShareColorOf(PlaylistSyncTypes)` :
+  `None` → sarcelle `ColorSync (0,120,140)` ; sinon `ColorOf(types)` (rouge > orange > vert, §4).
+  Ne dépend **ni** de `SyncRenderMode` **ni** de `ShowSyncPosition/Read/Removed`.
+- **Progression** : `ShowPlaylistProgress && PlaylistTotal > 0` → un `TextBadge` de libellé
+  `ProgressLabel(played, total)` = `"{played}/{total}"` (culture invariante), fond `ColorProgress (60,60,60)`, ou
+  `ColorSyncPosition (40,150,60)` si `played == total` (H1).
+- Valeurs défensives : `played` borné à `[0, total]`.
+- **Favoris** (H3 amendée) : `ShowFavorites && IsFavorite` → le `HeartBadge` existant, groupe `Favorites`, même
+  couleur, même position et mêmes réglages que sur les médias. Avec les défauts, Favoris et Progression sont tous deux
+  en `BottomRight` et sont donc dessinés côte à côte dans le même groupe de position (comportement standard de `DrawGroup`).
+- **Note** : jamais affichée sur une playlist (`Rating` non rempli).
+
+### 12. Clé de cache (`GetConfigurationCacheKey`), ajouts à §5
+
+`GC(config.PlaylistShare)`, `GC(config.PlaylistProgress)`, `config.ShowPlaylistShare`, `config.ShowPlaylistProgress`,
+`mediaInfo.IsPlaylist`, `mediaInfo.PlaylistShared`, `(int)mediaInfo.PlaylistSyncTypes`, `mediaInfo.PlaylistPlayed`,
+`mediaInfo.PlaylistTotal`.
+Favoris d'une playlist : **déjà couvert** par les segments existants `GC(config.Favorites)`, `config.ShowFavorites` et
+`mediaInfo.IsFavorite`. Aucun segment supplémentaire n'est nécessaire.
+Ajouter des segments change la clé de **toutes** les images badgées : chacune est régénérée une fois après la mise à jour
+(même effet qu'en v1.3.0).
+
+### 13. Index (`SyncDetector`), évolutions de §6
+
+- L'instantané porte trois tables : `Items: Dictionary<long, SyncTypes>` (inchangée), `Playlists:
+  Dictionary<long, PlaylistInfo>` et `Members: HashSet<long>` (tous les médias présents dans une playlist indexée, pour
+  filtrer les événements).
+- **Une seule passe** : 1 requête playlists (toutes) + 1 requête partages (batch, **toutes** les playlists) + lecture des
+  enfants **seulement si nécessaire** :
+  - pour `Items` : playlist partagée **et** étiquetée **et** `ShowSync` ;
+  - pour la progression : propriétaire connu **et** `ShowPlaylistProgress`.
+  Une playlist lue pour les deux usages n'est lue qu'une fois.
+- **Gating** (`IndexNeeded(config)`) : l'index n'est construit que si `ShowSync || ShowPlaylistShare || ShowPlaylistProgress`.
+  Si tous sont `false`, `GetSyncTypes` et `GetPlaylistInfo` renvoient le neutre **avant** tout appel (extension de CA11 v1.3.0).
+  `ShowSync = false` seul → `GetSyncTypes` renvoie `None` (comportement v1.3.0 inchangé), même si l'index existe pour les playlists.
+- **Fraîcheur** : `IsStale(builtAt, now, dirty)` = `now - builtAt >= 5 min` **ou** (`dirty` **et** `now - builtAt >= 30 s`).
+  La reconstruction reste en tâche de fond, en single flight, l'ancien instantané servi entre-temps ; `dirty` est remis à
+  `false` au **début** de la reconstruction, pour qu'un événement survenu pendant celle-ci ne soit pas perdu.
+- **Invalidation sur événement** (`MarkDirty`), via un `IServerEntryPoint` (`PlaylistEventsEntryPoint`, abonnement dans
+  `Run`, désabonnement dans `Dispose`) :
+
+| Événement | Filtre | Effet |
+|---|---|---|
+| `IUserDataManager.UserDataSaved` | `SaveReason ∈ {PlaybackFinished, TogglePlayed}` **et** `Item.InternalId ∈ Members` | `MarkDirty` |
+| `IPlaylistManager.PlaylistItemsAdded` / `PlaylistItemsRemoved` | aucun | `MarkDirty` |
+| `ILibraryManager.ItemRemoved` | item ∈ `Members`, ou item `Playlist` | `MarkDirty` |
+| `ILibraryManager.ItemAdded` | item `Playlist` | `MarkDirty` |
+
+  `PlaybackProgress` et `PlaybackStart` sont **ignorés** : ils arrivent toutes les quelques secondes pendant la lecture.
+  Un changement de partage ou d'étiquette n'a pas d'événement fiable : il est couvert par le TTL de 5 min.
+- Les gestionnaires d'événements ne font **aucun** appel bloquant ni aucune exception remontée : ils positionnent un drapeau.
