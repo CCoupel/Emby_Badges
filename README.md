@@ -12,6 +12,10 @@ Plugin Emby Media Server qui superpose des badges visuels sur les vignettes de l
 | Favoris | Icône cœur (si l'item est en favori) |
 | Note | Note communautaire (depuis v1.2.0) |
 | Synchro (PlaySync) | `P` position, `L` lu, `S` supprimé — en lettres, ou pictogramme coloré (voir ci-dessous) |
+| Playlist partagée | Pictogramme de synchro sur la vignette d'une playlist partagée (depuis v1.4.0, voir ci-dessous) |
+| Progression de playlist | Compteur « lus/total » sur la vignette d'une playlist, vert quand tout est lu (depuis v1.4.0, voir ci-dessous) |
+
+Sur une playlist, le cœur Favoris s'affiche aussi. La note n'est jamais affichée sur une playlist.
 
 Chaque groupe dispose de paramètres indépendants : position, taille, marge, opacité. Les badges individuels dans un groupe peuvent être activés/désactivés séparément.
 
@@ -45,6 +49,18 @@ Limites :
 - Le plugin ne lit que les étiquettes : sans PlaySync, aucun badge Synchro n'apparaît.
 - Les badges sont globaux, comme les favoris : tous les utilisateurs voient le même état.
 - Un changement de playlist ou d'étiquette apparaît au plus 5 minutes plus tard, puis Emby doit régénérer les images (vider le cache d'images d'Emby pour un rafraîchissement immédiat).
+
+## Playlists (v1.4.0)
+
+**Pictogramme de partage** : une playlist partagée (un propriétaire et au moins un membre) affiche un pictogramme de synchronisation sur sa vignette :
+- sarcelle, si aucune étiquette PlaySync n'est active sur la playlist ;
+- sinon, coloré selon le type le plus fort : rouge (supprimé), orange (lu), vert (position).
+
+Les playlists non partagées n'ont pas de pictogramme. Une playlist automatique (« collage ») pourrait ne pas en avoir : à confirmer sur le serveur.
+
+**Progression** : le compteur `lus/total` compte les médias de la playlist déjà lus par son **propriétaire**. Les séries et saisons sont développées en épisodes, un média présent deux fois compte une fois. Le compteur est gris, et vert quand tout est lu. Il est visible pour toutes les playlists qui ont un propriétaire, partagées ou non.
+
+Limites : l'état est celui du propriétaire, pour tous les utilisateurs. Après un visionnage, la nouvelle valeur apparaît à l'affichage suivant de la vignette, au plus tôt 30 secondes après.
 
 ## Build
 

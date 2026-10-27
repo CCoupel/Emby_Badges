@@ -19,6 +19,10 @@ public class PluginConfiguration : BasePluginConfiguration
     public GroupConfig Favorites    { get; set; } = new() { Position = BadgePosition.BottomRight };
     public GroupConfig Rating       { get; set; } = new() { Position = BadgePosition.TopLeft };
     public GroupConfig Sync         { get; set; } = new() { Position = BadgePosition.TopLeft };
+    /// <summary>Groupe du pictogramme « playlist partagée » (v1.4.0).</summary>
+    public GroupConfig PlaylistShare { get; set; } = new() { Position = BadgePosition.TopLeft };
+    /// <summary>Groupe du badge « lus/total » de playlist (v1.4.0, #6).</summary>
+    public GroupConfig PlaylistProgress { get; set; } = new() { Position = BadgePosition.BottomRight };
 
     /// <summary>Déclencheur du badge multi-version.</summary>
     public MultiVersionTrigger MultiVersionTrigger { get; set; } = MultiVersionTrigger.MultiVersionOnly;
@@ -45,6 +49,11 @@ public class PluginConfiguration : BasePluginConfiguration
     public bool ShowSyncPosition  { get; set; } = true;
     public bool ShowSyncRead      { get; set; } = true;
     public bool ShowSyncRemoved   { get; set; } = true;
+
+    // Badge « playlist partagée » (v1.4.0)
+    public bool ShowPlaylistShare { get; set; } = true;
+    /// <summary>Affiche le badge « lus/total » (lecture du propriétaire) sur les playlists (v1.4.0, #6).</summary>
+    public bool ShowPlaylistProgress { get; set; } = true;
 }
 
 public enum SyncRenderMode

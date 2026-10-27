@@ -38,8 +38,10 @@ define([], function () {
       view.querySelector('#ShowSyncRead').checked = cfg.ShowSyncRead !== false;
       view.querySelector('#ShowSyncRemoved').checked = cfg.ShowSyncRemoved !== false;
       setSelect('SyncRenderMode', cfg.SyncRenderMode || 'Letters');
+      view.querySelector('#ShowPlaylistShare').checked = cfg.ShowPlaylistShare !== false;
+      view.querySelector('#ShowPlaylistProgress').checked = cfg.ShowPlaylistProgress !== false;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync'].forEach(function (g) {
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync', 'PlaylistShare', 'PlaylistProgress'].forEach(function (g) {
                     var gc = cfg[g] || {};
                     setSelect(g + '_Position', gc.Position || 'BottomLeft');
                     view.querySelector('#' + g + '_SizePercent').value   = gc.SizePercent   != null ? gc.SizePercent   : 8;
@@ -73,8 +75,10 @@ define([], function () {
       cfg.ShowSyncRead = view.querySelector('#ShowSyncRead').checked;
       cfg.ShowSyncRemoved = view.querySelector('#ShowSyncRemoved').checked;
       cfg.SyncRenderMode = view.querySelector('#SyncRenderMode').value;
+      cfg.ShowPlaylistShare = view.querySelector('#ShowPlaylistShare').checked;
+      cfg.ShowPlaylistProgress = view.querySelector('#ShowPlaylistProgress').checked;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync'].forEach(function (g) {
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync', 'PlaylistShare', 'PlaylistProgress'].forEach(function (g) {
                     cfg[g] = {
                         Position:      view.querySelector('#' + g + '_Position').value,
                         SizePercent:   parseFloat(view.querySelector('#' + g + '_SizePercent').value),

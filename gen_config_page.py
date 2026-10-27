@@ -97,6 +97,16 @@ RATING_BADGES = (
     '<span class="eb-text-badge eb-rating">7.8</span><span>Note du média (0–10)</span></label>'
 )
 
+PLAYLIST_SHARE_BADGES = (
+    '<label class="eb-toggle"><input type="checkbox" id="ShowPlaylistShare" />'
+    '<span class="eb-text-badge eb-sync">PLS</span><span>Pictogramme « partagée » sur les playlists partagées (couleur selon les étiquettes PlaySync, sarcelle sinon)</span></label>'
+)
+
+PLAYLIST_PROGRESS_BADGES = (
+    '<label class="eb-toggle"><input type="checkbox" id="ShowPlaylistProgress" />'
+    '<span class="eb-text-badge">3/12</span><span>Progression « lus/total » sur les playlists (état de lecture du propriétaire)</span></label>'
+)
+
 SYNC_BADGES = (
     '<label class="eb-toggle"><input type="checkbox" id="ShowSync" />'
     '<span class="eb-text-badge eb-sync">PLS</span><span>Activer le badge (média dans une playlist partagée PlaySync)</span></label>'
@@ -242,6 +252,20 @@ HTML = f"""<div is="emby-scroller" class="view flex flex-direction-column scroll
         {group_settings("Sync")}
       </div>
 
+      <!-- Playlist partagée -->
+      <div class="detailSection">
+        <div class="detailSectionHeader">Playlist partagée</div>
+        <div class="eb-toggles">{PLAYLIST_SHARE_BADGES}</div>
+        {group_settings("PlaylistShare")}
+      </div>
+
+      <!-- Progression de playlist -->
+      <div class="detailSection">
+        <div class="detailSectionHeader">Progression de playlist</div>
+        <div class="eb-toggles">{PLAYLIST_PROGRESS_BADGES}</div>
+        {group_settings("PlaylistProgress")}
+      </div>
+
       <div style="margin-top:1.5em">
         <button id="BtnSave" is="emby-button" class="raised emby-button">
           <span>Enregistrer</span>
@@ -294,8 +318,10 @@ define([], function () {{
       view.querySelector('#ShowSyncRead').checked = cfg.ShowSyncRead !== false;
       view.querySelector('#ShowSyncRemoved').checked = cfg.ShowSyncRemoved !== false;
       setSelect('SyncRenderMode', cfg.SyncRenderMode || 'Letters');
+      view.querySelector('#ShowPlaylistShare').checked = cfg.ShowPlaylistShare !== false;
+      view.querySelector('#ShowPlaylistProgress').checked = cfg.ShowPlaylistProgress !== false;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync'].forEach(function (g) {{
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync', 'PlaylistShare', 'PlaylistProgress'].forEach(function (g) {{
                     var gc = cfg[g] || {{}};
                     setSelect(g + '_Position', gc.Position || 'BottomLeft');
                     view.querySelector('#' + g + '_SizePercent').value   = gc.SizePercent   != null ? gc.SizePercent   : 8;
@@ -329,8 +355,10 @@ define([], function () {{
       cfg.ShowSyncRead = view.querySelector('#ShowSyncRead').checked;
       cfg.ShowSyncRemoved = view.querySelector('#ShowSyncRemoved').checked;
       cfg.SyncRenderMode = view.querySelector('#SyncRenderMode').value;
+      cfg.ShowPlaylistShare = view.querySelector('#ShowPlaylistShare').checked;
+      cfg.ShowPlaylistProgress = view.querySelector('#ShowPlaylistProgress').checked;
 
-                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync'].forEach(function (g) {{
+                ['Resolution', 'Language', 'MultiVersion', 'Favorites', 'Rating', 'Sync', 'PlaylistShare', 'PlaylistProgress'].forEach(function (g) {{
                     cfg[g] = {{
                         Position:      view.querySelector('#' + g + '_Position').value,
                         SizePercent:   parseFloat(view.querySelector('#' + g + '_SizePercent').value),

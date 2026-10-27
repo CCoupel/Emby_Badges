@@ -10,6 +10,7 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Playlists;
 using MediaBrowser.Model.Entities;
 using MediaBrowser.Model.Logging;
 
@@ -39,6 +40,25 @@ public static class BadgeDataExtractor
         string? tmdbApiKey = null,
         SyncDetector? syncDetector = null)
     {
+        // Playlist : ni flux, ni TMDB, ni note. Partage (index) et favori (premier utilisateur) seulement.
+        if (item is Playlist)
+        {
+            var cfg = Plugin.Instance?.Configuration;
+            var needInfo = (cfg?.ShowPlaylistShare ?? false) || (cfg?.ShowPlaylistProgress ?? false);
+            var pl = needInfo && syncDetector != null
+                ? syncDetector.GetPlaylistInfo(item.InternalId)
+                : SyncDetector.PlaylistInfo.Neutral;
+            return new MediaInfo
+            {
+                IsPlaylist        = true,
+                PlaylistShared    = pl.IsShared,
+                PlaylistSyncTypes = pl.OwnTypes,
+                PlaylistPlayed    = pl.Played,
+                PlaylistTotal     = pl.Total,
+                IsFavorite        = DetectFavorite(item, userDataManager, userManager, logger)
+            };
+        }
+
         // Série / saison : pas de flux propres → cumul des résolutions, langues et versions
         // de tous les épisodes ; note et favori restent ceux de la série/saison.
         if (item is Series or Season)
@@ -475,6 +495,21 @@ public class MediaInfo
 
     /// <summary>Types de synchro PlaySync détectés (union des playlists partagées contenant le média).</summary>
     public SyncTypes SyncTypes { get; set; } = SyncTypes.None;
+
+    /// <summary>True si l'item est une playlist (seuls les badges playlist et Favoris s'appliquent).</summary>
+    public bool IsPlaylist { get; set; }
+
+    /// <summary>Playlist partagée (propriétaire + au moins un membre de niveau ≥ Read).</summary>
+    public bool PlaylistShared { get; set; }
+
+    /// <summary>Étiquettes PlaySync propres à la playlist (état effectif), indépendantes du partage.</summary>
+    public SyncTypes PlaylistSyncTypes { get; set; } = SyncTypes.None;
+
+    /// <summary>Médias lus par le propriétaire de la playlist.</summary>
+    public int PlaylistPlayed { get; set; }
+
+    /// <summary>Médias lisibles de la playlist (0 : pas de badge de progression).</summary>
+    public int PlaylistTotal { get; set; }
 
     /// <summary>Texte de debug : source et langue originale détectée (ex: "TMDB:ja icon=lang_japanese").</summary>
     public string? OriginDebugText { get; set; }

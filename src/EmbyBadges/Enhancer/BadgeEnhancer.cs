@@ -7,6 +7,7 @@ using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Persistence;
+using MediaBrowser.Controller.Playlists;
 using MediaBrowser.Model.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Drawing;
@@ -42,7 +43,7 @@ public class BadgeEnhancer : IImageEnhancer
         _appPaths = appPaths;
         _userDataManager = userDataManager;
         _userManager = userManager;
-        _syncDetector = new SyncDetector(libraryManager, userManager, itemRepository, _logger);
+        _syncDetector = new SyncDetector(libraryManager, userManager, itemRepository, _logger, userDataManager);
         _renderer = new BadgeRenderer(_logger);
     }
 
@@ -62,14 +63,14 @@ public class BadgeEnhancer : IImageEnhancer
             return false;
 
         // Films, épisodes, séries et saisons
-        if (item is not (Movie or Episode or Series or Season))
+        if (item is not (Movie or Episode or Series or Season or Playlist))
             return false;
 
         // Posters et vignettes ; fonds (Backdrop) uniquement pour épisodes/séries/saisons :
         // l'accueil (« Continuer à regarder ») affiche le fond de la série pour ses épisodes.
         return imageType == ImageType.Primary
             || imageType == ImageType.Thumb
-            || (imageType == ImageType.Backdrop && item is not Movie);
+            || (imageType == ImageType.Backdrop && item is not (Movie or Playlist));
     }
 
     /// <summary>
@@ -95,10 +96,14 @@ public class BadgeEnhancer : IImageEnhancer
             GC(config.Favorites),
             GC(config.Rating),
             GC(config.Sync),
+            GC(config.PlaylistShare),
+            GC(config.PlaylistProgress),
             config.ShowSd, config.ShowHd, config.ShowFullHd, config.Show4K,
             config.ShowFrench, config.ShowEnglish, config.ShowJapanese, config.ShowVo, config.ShowMulti,
             config.MultiVersionTrigger, config.ShowFavorites, config.ShowRating, config.HighlightOriginalLanguage,
             config.ShowSync, config.SyncRenderMode, config.ShowSyncPosition, config.ShowSyncRead, config.ShowSyncRemoved,
+            config.ShowPlaylistShare,
+            config.ShowPlaylistProgress,
             !string.IsNullOrEmpty(config.TmdbApiKey),
             config.DebugMode,
             string.Join(",", mediaInfo.ResolutionIcons),
@@ -110,7 +115,12 @@ public class BadgeEnhancer : IImageEnhancer
             mediaInfo.IsFromVirtualLib,
             mediaInfo.IsFavorite,
             mediaInfo.Rating,
-            (int)mediaInfo.SyncTypes
+            (int)mediaInfo.SyncTypes,
+            mediaInfo.IsPlaylist,
+            mediaInfo.PlaylistShared,
+            (int)mediaInfo.PlaylistSyncTypes,
+            mediaInfo.PlaylistPlayed,
+            mediaInfo.PlaylistTotal
         );
     }
 
@@ -136,6 +146,7 @@ public class BadgeEnhancer : IImageEnhancer
         try
         {
             var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+            if (config.DebugMode) _logger.Debug("EmbyBadges: enhance {0} {1}", imageType, item.Name);
             var mediaInfo = BadgeDataExtractor.GetMediaInfo(item, _libraryManager, _appPaths, _userDataManager, _userManager, _logger, Plugin.Instance?.Configuration?.TmdbApiKey, _syncDetector);
 
             await _renderer.RenderBadgesAsync(inputFile, outputFile, mediaInfo, config);
