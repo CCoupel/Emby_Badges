@@ -34,4 +34,21 @@ public class CacheKeyContractTests
     [InlineData("(int)mediaInfo.SyncTypes")]
     public void CleDeCache_ContientLeChampSynchro(string fragment)
         => Assert.Contains(fragment, KeySource());
+
+    // LOT-1 (contracts/models.md §12) : partage de playlist. Favoris d'une playlist = segments existants.
+    [Theory]
+    [InlineData("GC(config.PlaylistShare)")]
+    [InlineData("config.ShowPlaylistShare")]
+    [InlineData("mediaInfo.IsPlaylist")]
+    [InlineData("mediaInfo.PlaylistShared")]
+    [InlineData("(int)mediaInfo.PlaylistSyncTypes")]
+    public void CleDeCache_ContientLeChampPartagePlaylist(string fragment)
+        => Assert.Contains(fragment, KeySource());
+
+    [Theory]
+    [InlineData("GC(config.Favorites)")]
+    [InlineData("config.ShowFavorites")]
+    [InlineData("mediaInfo.IsFavorite")]
+    public void CleDeCache_ContientLesChampsFavorisPourPlaylist(string fragment)
+        => Assert.Contains(fragment, KeySource());
 }
