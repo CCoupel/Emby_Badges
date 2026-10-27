@@ -1,7 +1,7 @@
 # Release v1.4.0 - Vos playlists se voient sur les affiches
 
 **Statut** : prête pour la PROD (LOT-1 et LOT-2 validés sur QUALIF 1.4.0.2 et 1.4.0.3).
-**Date** : à définir à la publication
+**Date** : 2026-10-27
 **Version de développement** : 1.4.0 (le numéro de build QUALIF est rapporté par le déploiement)
 
 ## Qualité avant publication

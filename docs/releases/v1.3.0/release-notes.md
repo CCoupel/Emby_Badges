@@ -1,6 +1,6 @@
 # Release v1.3.0 - Vos affiches indiquent où en est la synchronisation
 
-**Date** : à définir à la publication
+**Date** : 2026-10-22
 **Version de développement** : 1.3.0 (le numéro de build QUALIF est rapporté par le déploiement)
 
 ## Qualité avant publication
