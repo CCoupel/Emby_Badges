@@ -51,4 +51,13 @@ public class CacheKeyContractTests
     [InlineData("mediaInfo.IsFavorite")]
     public void CleDeCache_ContientLesChampsFavorisPourPlaylist(string fragment)
         => Assert.Contains(fragment, KeySource());
+
+    // LOT-2 (contracts/models.md §12) : progression de playlist.
+    [Theory]
+    [InlineData("GC(config.PlaylistProgress)")]
+    [InlineData("config.ShowPlaylistProgress")]
+    [InlineData("mediaInfo.PlaylistPlayed")]
+    [InlineData("mediaInfo.PlaylistTotal")]
+    public void CleDeCache_ContientLeChampProgressionPlaylist(string fragment)
+        => Assert.Contains(fragment, KeySource());
 }

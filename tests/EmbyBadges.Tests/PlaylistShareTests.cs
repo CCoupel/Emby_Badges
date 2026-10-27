@@ -80,8 +80,8 @@ public class IsSharedPlaylistNonEtiquetéeTests
 }
 
 /// <summary>
-/// SyncDetector.IndexNeeded en LOT-1 : ShowSync || ShowPlaylistShare ; ShowPlaylistProgress est ignoré
-/// jusqu'au LOT-2 (revue LOT-1, CA6).
+/// SyncDetector.IndexNeeded (§13, CA6, CA13) : ShowSync || ShowPlaylistShare || ShowPlaylistProgress
+/// (ShowPlaylistProgress rejoint le gating au LOT-2).
 /// </summary>
 public class IndexNeededTests
 {
@@ -89,12 +89,12 @@ public class IndexNeededTests
     [InlineData(false, false, false, false)]
     [InlineData(true,  false, false, true)]
     [InlineData(false, true,  false, true)]
-    [InlineData(false, false, true,  false)] // progression seule : pas d'index en LOT-1
+    [InlineData(false, false, true,  true)]
     [InlineData(true,  true,  false, true)]
     [InlineData(true,  false, true,  true)]
     [InlineData(false, true,  true,  true)]
     [InlineData(true,  true,  true,  true)]
-    public void IndexNeeded_ShowSyncOuShowPlaylistShare(bool sync, bool share, bool progress, bool attendu)
+    public void IndexNeeded_OuDesTroisFlags(bool sync, bool share, bool progress, bool attendu)
     {
         var cfg = new PluginConfiguration
         {
@@ -106,8 +106,8 @@ public class IndexNeededTests
     }
 
     [Fact]
-    public void ProgressionSeule_NeDéclenchePasLIndex()
-        => Assert.False(SyncDetector.IndexNeeded(new PluginConfiguration
+    public void ProgressionSeule_DéclencheLIndex()
+        => Assert.True(SyncDetector.IndexNeeded(new PluginConfiguration
         {
             ShowSync = false,
             ShowPlaylistShare = false,
