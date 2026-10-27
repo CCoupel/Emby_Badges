@@ -43,7 +43,7 @@ public class BadgeEnhancer : IImageEnhancer
         _appPaths = appPaths;
         _userDataManager = userDataManager;
         _userManager = userManager;
-        _syncDetector = new SyncDetector(libraryManager, userManager, itemRepository, _logger);
+        _syncDetector = new SyncDetector(libraryManager, userManager, itemRepository, _logger, userDataManager);
         _renderer = new BadgeRenderer(_logger);
     }
 
@@ -97,11 +97,13 @@ public class BadgeEnhancer : IImageEnhancer
             GC(config.Rating),
             GC(config.Sync),
             GC(config.PlaylistShare),
+            GC(config.PlaylistProgress),
             config.ShowSd, config.ShowHd, config.ShowFullHd, config.Show4K,
             config.ShowFrench, config.ShowEnglish, config.ShowJapanese, config.ShowVo, config.ShowMulti,
             config.MultiVersionTrigger, config.ShowFavorites, config.ShowRating, config.HighlightOriginalLanguage,
             config.ShowSync, config.SyncRenderMode, config.ShowSyncPosition, config.ShowSyncRead, config.ShowSyncRemoved,
             config.ShowPlaylistShare,
+            config.ShowPlaylistProgress,
             !string.IsNullOrEmpty(config.TmdbApiKey),
             config.DebugMode,
             string.Join(",", mediaInfo.ResolutionIcons),
@@ -116,7 +118,9 @@ public class BadgeEnhancer : IImageEnhancer
             (int)mediaInfo.SyncTypes,
             mediaInfo.IsPlaylist,
             mediaInfo.PlaylistShared,
-            (int)mediaInfo.PlaylistSyncTypes
+            (int)mediaInfo.PlaylistSyncTypes,
+            mediaInfo.PlaylistPlayed,
+            mediaInfo.PlaylistTotal
         );
     }
 

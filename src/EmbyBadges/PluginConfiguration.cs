@@ -21,6 +21,8 @@ public class PluginConfiguration : BasePluginConfiguration
     public GroupConfig Sync         { get; set; } = new() { Position = BadgePosition.TopLeft };
     /// <summary>Groupe du pictogramme « playlist partagée » (v1.4.0).</summary>
     public GroupConfig PlaylistShare { get; set; } = new() { Position = BadgePosition.TopLeft };
+    /// <summary>Groupe du badge « lus/total » de playlist (v1.4.0, #6).</summary>
+    public GroupConfig PlaylistProgress { get; set; } = new() { Position = BadgePosition.BottomRight };
 
     /// <summary>Déclencheur du badge multi-version.</summary>
     public MultiVersionTrigger MultiVersionTrigger { get; set; } = MultiVersionTrigger.MultiVersionOnly;
@@ -50,7 +52,7 @@ public class PluginConfiguration : BasePluginConfiguration
 
     // Badge « playlist partagée » (v1.4.0)
     public bool ShowPlaylistShare { get; set; } = true;
-    /// <summary>LOT-2 (progression de playlist) : réservé, sans effet tant que le LOT-2 n'est pas livré (ne participe pas au gating).</summary>
+    /// <summary>Affiche le badge « lus/total » (lecture du propriétaire) sur les playlists (v1.4.0, #6).</summary>
     public bool ShowPlaylistProgress { get; set; } = true;
 }
 

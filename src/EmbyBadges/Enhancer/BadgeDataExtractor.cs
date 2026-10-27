@@ -43,8 +43,9 @@ public static class BadgeDataExtractor
         // Playlist : ni flux, ni TMDB, ni note. Partage (index) et favori (premier utilisateur) seulement.
         if (item is Playlist)
         {
-            var showShare = Plugin.Instance?.Configuration?.ShowPlaylistShare ?? false;
-            var pl = showShare && syncDetector != null
+            var cfg = Plugin.Instance?.Configuration;
+            var needInfo = (cfg?.ShowPlaylistShare ?? false) || (cfg?.ShowPlaylistProgress ?? false);
+            var pl = needInfo && syncDetector != null
                 ? syncDetector.GetPlaylistInfo(item.InternalId)
                 : SyncDetector.PlaylistInfo.Neutral;
             return new MediaInfo
@@ -52,6 +53,8 @@ public static class BadgeDataExtractor
                 IsPlaylist        = true,
                 PlaylistShared    = pl.IsShared,
                 PlaylistSyncTypes = pl.OwnTypes,
+                PlaylistPlayed    = pl.Played,
+                PlaylistTotal     = pl.Total,
                 IsFavorite        = DetectFavorite(item, userDataManager, userManager, logger)
             };
         }
@@ -502,10 +505,10 @@ public class MediaInfo
     /// <summary>Étiquettes PlaySync propres à la playlist (état effectif), indépendantes du partage.</summary>
     public SyncTypes PlaylistSyncTypes { get; set; } = SyncTypes.None;
 
-    /// <summary>Médias lus par le propriétaire (réservé au LOT-2, 0 pour l'instant).</summary>
+    /// <summary>Médias lus par le propriétaire de la playlist.</summary>
     public int PlaylistPlayed { get; set; }
 
-    /// <summary>Médias lisibles de la playlist (réservé au LOT-2, 0 pour l'instant).</summary>
+    /// <summary>Médias lisibles de la playlist (0 : pas de badge de progression).</summary>
     public int PlaylistTotal { get; set; }
 
     /// <summary>Texte de debug : source et langue originale détectée (ex: "TMDB:ja icon=lang_japanese").</summary>

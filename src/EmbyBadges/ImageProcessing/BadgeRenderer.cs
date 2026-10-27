@@ -21,6 +21,7 @@ public class BadgeRenderer
     private static readonly SKColor ColorSyncRemoved  = new SKColor(200, 30,  30);
     private static readonly SKColor ColorSyncRead     = new SKColor(220, 120, 0);
     private static readonly SKColor ColorSyncPosition = new SKColor(40,  150, 60);
+    private static readonly SKColor ColorProgress     = new SKColor(60,  60,  60);
 
     public BadgeRenderer(ILogger logger) => _logger = logger;
 
@@ -67,6 +68,11 @@ public class BadgeRenderer
         {
             if (config.ShowPlaylistShare && mediaInfo.PlaylistShared)
                 list.Add(new SyncBadge(ShareColorOf(mediaInfo.PlaylistSyncTypes), config.PlaylistShare));
+            if (config.ShowPlaylistProgress && ProgressLabel(mediaInfo.PlaylistPlayed, mediaInfo.PlaylistTotal) is string label)
+            {
+                bool all = mediaInfo.PlaylistPlayed >= mediaInfo.PlaylistTotal;
+                list.Add(new TextBadge(label, all ? ColorSyncPosition : ColorProgress, config.PlaylistProgress));
+            }
             if (config.ShowFavorites && mediaInfo.IsFavorite)
                 list.Add(new HeartBadge(ColorFavorite, config.Favorites));
             return list;
@@ -151,6 +157,14 @@ public class BadgeRenderer
         => (t.HasFlag(SyncTypes.Position) ? "P" : "")
          + (t.HasFlag(SyncTypes.Read)     ? "L" : "")
          + (t.HasFlag(SyncTypes.Removed)  ? "S" : "");
+
+    /// <summary>Libellé « lus/total » (culture invariante, lus borné à [0, total]) ; <c>null</c> si total ≤ 0.</summary>
+    internal static string? ProgressLabel(int played, int total)
+    {
+        if (total <= 0) return null;
+        var p = Math.Min(Math.Max(played, 0), total);
+        return p.ToString(System.Globalization.CultureInfo.InvariantCulture) + "/" + total.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
 
     /// <summary>Couleur du pictogramme « playlist partagée » : sarcelle sans étiquette active, sinon <see cref="ColorOf"/>.</summary>
     internal static SKColor ShareColorOf(SyncTypes t)
