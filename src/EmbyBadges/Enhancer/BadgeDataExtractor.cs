@@ -43,7 +43,10 @@ public static class BadgeDataExtractor
         // Playlist : ni flux, ni TMDB, ni note. Partage (index) et favori (premier utilisateur) seulement.
         if (item is Playlist)
         {
-            var pl = syncDetector?.GetPlaylistInfo(item.InternalId) ?? SyncDetector.PlaylistInfo.Neutral;
+            var showShare = Plugin.Instance?.Configuration?.ShowPlaylistShare ?? false;
+            var pl = showShare && syncDetector != null
+                ? syncDetector.GetPlaylistInfo(item.InternalId)
+                : SyncDetector.PlaylistInfo.Neutral;
             return new MediaInfo
             {
                 IsPlaylist        = true,

@@ -141,8 +141,8 @@ public class BadgeEnhancer : IImageEnhancer
     {
         try
         {
-            _logger.Debug("EmbyBadges: enhance {0} {1}", imageType, item.Name);
             var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
+            if (config.DebugMode) _logger.Debug("EmbyBadges: enhance {0} {1}", imageType, item.Name);
             var mediaInfo = BadgeDataExtractor.GetMediaInfo(item, _libraryManager, _appPaths, _userDataManager, _userManager, _logger, Plugin.Instance?.Configuration?.TmdbApiKey, _syncDetector);
 
             await _renderer.RenderBadgesAsync(inputFile, outputFile, mediaInfo, config);

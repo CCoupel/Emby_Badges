@@ -50,7 +50,7 @@ public class PluginConfiguration : BasePluginConfiguration
 
     // Badge « playlist partagée » (v1.4.0)
     public bool ShowPlaylistShare { get; set; } = true;
-    /// <summary>Réservé au LOT-2 (progression de playlist) : n'intervient pour l'instant que dans le gating de l'index (<c>IndexNeeded</c>).</summary>
+    /// <summary>LOT-2 (progression de playlist) : réservé, sans effet tant que le LOT-2 n'est pas livré (ne participe pas au gating).</summary>
     public bool ShowPlaylistProgress { get; set; } = true;
 }
 

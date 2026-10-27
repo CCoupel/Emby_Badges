@@ -152,11 +152,11 @@ public class BadgeRenderer
          + (t.HasFlag(SyncTypes.Read)     ? "L" : "")
          + (t.HasFlag(SyncTypes.Removed)  ? "S" : "");
 
-    /// <summary>Couleur du type le plus fort : Removed (rouge) > Read (orange) > Position (vert).</summary>
     /// <summary>Couleur du pictogramme « playlist partagée » : sarcelle sans étiquette active, sinon <see cref="ColorOf"/>.</summary>
     internal static SKColor ShareColorOf(SyncTypes t)
         => t == SyncTypes.None ? ColorSync : ColorOf(t);
 
+    /// <summary>Couleur du type le plus fort : Removed (rouge) > Read (orange) > Position (vert).</summary>
     internal static SKColor ColorOf(SyncTypes t)
         => t.HasFlag(SyncTypes.Removed) ? ColorSyncRemoved
          : t.HasFlag(SyncTypes.Read)    ? ColorSyncRead

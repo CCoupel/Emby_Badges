@@ -51,13 +51,13 @@ public class SyncDetector
 
     private readonly object _buildLock = new();
     private int _rebuilding;
-    private volatile Snapshot _snapshot = new(DateTime.MinValue, new Dictionary<long, SyncTypes>(), new Dictionary<long, PlaylistInfo>());
+    private volatile Snapshot _snapshot = new(DateTime.MinValue, new Dictionary<long, SyncTypes>(), new Dictionary<long, PlaylistInfo>(), false);
 
     /// <summary>Instantané de l'index : <c>Map</c> = table des médias (v1.3.0, inchangée), <c>Playlists</c> = infos par playlist.</summary>
-    private sealed record Snapshot(DateTime At, Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists);
+    private sealed record Snapshot(DateTime At, Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists, bool HadItems);
 
     /// <summary>Résultat d'une passe de construction.</summary>
-    private sealed record BuildResult(Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists);
+    private sealed record BuildResult(Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists, bool HadItems);
 
     /// <summary>Infos d'une playlist (LOT-1 : partage ; la progression Played/Total reste à 0 jusqu'au LOT-2).</summary>
     internal sealed record PlaylistInfo(bool IsShared, long? OwnerId, SyncTypes OwnTypes, int Played, int Total)
@@ -132,7 +132,7 @@ public class SyncDetector
 
     /// <summary>L'index n'est construit que si au moins un des badges qui s'en servent est actif (CA6).</summary>
     internal static bool IndexNeeded(PluginConfiguration config)
-        => config.ShowSync || config.ShowPlaylistShare || config.ShowPlaylistProgress;
+        => config.ShowSync || config.ShowPlaylistShare; // LOT-2 : ajouter ShowPlaylistProgress avec son UI
 
     // ── Index ────────────────────────────────────────────────────────────────
 
@@ -142,7 +142,7 @@ public class SyncDetector
         var config = Plugin.Instance?.Configuration;
         if (config is null || !config.ShowSync) return SyncTypes.None; // CA11 : aucun coût
 
-        var snap = EnsureSnapshot();
+        var snap = EnsureSnapshot(needItems: true);
         return snap.Map.TryGetValue(internalId, out var t) ? t : SyncTypes.None;
     }
 
@@ -157,10 +157,14 @@ public class SyncDetector
     }
 
     /// <summary>Renvoie l'instantané courant ; déclenche le premier build (bloquant) ou la reconstruction en tâche de fond.</summary>
-    private Snapshot EnsureSnapshot()
+    private Snapshot EnsureSnapshot(bool needItems = false)
     {
         var snap = _snapshot;
-        if (DateTime.UtcNow - snap.At >= SyncIndexTtl)
+        // Index construit sans la table Items (ShowSync était faux) puis ShowSync activé : reconstruction
+        // forcée, au plus toutes les 10 s pour ne pas boucler si la reconstruction échoue.
+        var age = DateTime.UtcNow - snap.At;
+        bool missingItems = needItems && !snap.HadItems && snap.At != DateTime.MinValue && age >= TimeSpan.FromSeconds(10);
+        if (age >= SyncIndexTtl || missingItems)
         {
             if (snap.At == DateTime.MinValue)
             {
@@ -196,7 +200,7 @@ public class SyncDetector
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var built = BuildMap();
-            var fresh = new Snapshot(DateTime.UtcNow, built.Map, built.Playlists);
+            var fresh = new Snapshot(DateTime.UtcNow, built.Map, built.Playlists, built.HadItems);
             _snapshot = fresh;
             _logger.Debug("SyncIndex reconstruit : {0} items, {1} playlists, {2} ms", built.Map.Count, built.Playlists.Count, sw.ElapsedMilliseconds);
             return fresh;
@@ -205,7 +209,7 @@ public class SyncDetector
         {
             _logger.Warn("SyncIndex : échec de la reconstruction ({0}) — index précédent conservé", ex.Message);
             // On repousse l'échéance pour ne pas retenter à chaque appel.
-            var kept = new Snapshot(DateTime.UtcNow, previous.Map, previous.Playlists);
+            var kept = new Snapshot(DateTime.UtcNow, previous.Map, previous.Playlists, previous.HadItems);
             _snapshot = kept;
             return kept;
         }
@@ -215,11 +219,10 @@ public class SyncDetector
     {
         var map = new Dictionary<long, SyncTypes>();
         var infos = new Dictionary<long, PlaylistInfo>();
-        var result = new BuildResult(map, infos);
-        if (_itemRepository == null) return result;
-
         var config = Plugin.Instance?.Configuration;
         bool wantItems = config?.ShowSync ?? false; // table Items : badge Synchro des médias (v1.3.0)
+        var result = new BuildResult(map, infos, wantItems);
+        if (_itemRepository == null) return result;
 
         var playlists = _libraryManager
             .GetItemList(new InternalItemsQuery { IncludeItemTypes = new[] { "Playlist" }, Recursive = true })
