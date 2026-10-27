@@ -124,7 +124,7 @@ The Synchro badge reads the **PlaySync** labels stored on Emby items. It does **
 - **Latency**: a change in playlist membership or labels is visible after at most 5 min (index TTL), then the Emby image cache must regenerate (the new key changes `enhanced-images`). `resized-images` still requires the manual purge (see « Image Cache »).
 - **Known limitation**: a season or series placed directly in a playlist is not propagated to its parent (only episodes propagate upward).
 
-### Playlist badges (v1.4.0, #5)
+### Playlist badges (v1.4.0, #5 sharing, #6 progress)
 
 Badges drawn on the thumbnail of an Emby `Playlist` item: sharing indicator, progress counter and favorites heart. A playlist shows no other badge.
 
@@ -144,7 +144,7 @@ Badges drawn on the thumbnail of an Emby `Playlist` item: sharing indicator, pro
 - **Freshness**: `IsStale` = age ≥ 5 min, or (dirty and age ≥ 30 s). `dirty` is reset at the **start** of a rebuild, so an event during the rebuild is not lost.
 - **Latency**: the rebuild is lazy. The first image request after 30 s still serves the old snapshot and starts the background rebuild; the new value appears on the **next** display of the thumbnail. Afterwards the usual `resized-images` limit applies (manual purge).
 - **Index rebuild**: `Snapshot.HadItems` records whether the snapshot was built with `ShowSync` on. When `ShowSync` is enabled after the index was built, `GetSyncTypes` forces a background rebuild, at most every 10 s, so the change is taken into account without waiting for the 5 min TTL.
-- **Open points to confirm in QUALIF**: auto-generated playlists ("collage automatique") may carry no badge; the `PlaylistEventsEntryPoint active` Debug log at startup (else Emby failed to inject it, the plugin then relies on the TTL alone); `IsVirtualItem = false` / `IsUnaired = false` on a series with missing episodes (they may inflate `Total` otherwise).
+- **Open points, not verified** (v1.4.0 QUALIF validated by the user without running the detailed procedure): auto-generated playlists ("collage automatique") may carry no badge; the `PlaylistEventsEntryPoint active` Debug log at startup (if absent, Emby failed to inject the entry point and the plugin relies on the TTL alone); `IsVirtualItem = false` / `IsUnaired = false` on a series with missing episodes (they may inflate `Total` otherwise).
 
 ### Badge positions
 

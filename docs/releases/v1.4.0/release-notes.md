@@ -1,13 +1,13 @@
 # Release v1.4.0 - Vos playlists se voient sur les affiches
 
-**Statut** : brouillon. LOT-1 et LOT-2 sont dans la release ; la validation QUALIF de LOT-2 reste à faire.
+**Statut** : prête pour la PROD (LOT-1 et LOT-2 validés sur QUALIF 1.4.0.2 et 1.4.0.3).
 **Date** : à définir à la publication
 **Version de développement** : 1.4.0 (le numéro de build QUALIF est rapporté par le déploiement)
 
 ## Qualité avant publication
 
 - **LOT-1 (partage et favori)** : revue de code approuvée après correctifs des réserves ; QA validée (99/99 tests) ; CI de branche verte ; validée par l'utilisateur sur QUALIF 1.4.0.2 (sans exécution de la procédure détaillée). Point ouvert : « collage automatique » non vérifié.
-- **LOT-2 (progression)** : revue de code approuvée (les observations mineures ne bloquent pas) ; tests unitaires 131/131 ; QA validée (réserve sur la procédure levée, e20c809) ; CI en cours ; déploiement QUALIF 1.4.0.3 à faire.
+- **LOT-2 (progression)** : revue de code approuvée (les observations mineures ne bloquent pas) ; tests unitaires 131/131 ; QA validée (réserve sur la procédure levée, e20c809) ; CI de branche verte (run 40536812014) ; validée par l'utilisateur sur QUALIF 1.4.0.3 (sans exécution de la procédure détaillée). Point ouvert : « collage automatique » non vérifié.
 
 ## Nouveautés
 
@@ -42,7 +42,7 @@ Avec les défauts, le cœur Favoris et le compteur sont tous deux en bas à droi
 
 - **Badges globaux** : comme les favoris, l'état est le même pour tous les utilisateurs d'Emby. Le cœur reflète le premier utilisateur, et le compteur reflète le propriétaire de la playlist.
 - **Délai** : un changement de partage ou d'étiquette apparaît au plus 5 minutes plus tard. Un visionnage ou une modification de playlist apparaît au plus tôt 30 secondes plus tard, à l'affichage suivant de la vignette.
-- **Playlists automatiques** : une playlist générée automatiquement pourrait ne pas recevoir de pictogramme (à confirmer sur le serveur).
+- **Playlists automatiques** : une playlist générée automatiquement (« collage automatique ») pourrait ne pas recevoir de pictogramme. Non vérifié.
 
 ## Comment mettre à jour
 
