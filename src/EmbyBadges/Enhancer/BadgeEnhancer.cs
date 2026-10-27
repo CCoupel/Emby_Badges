@@ -7,6 +7,7 @@ using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Persistence;
+using MediaBrowser.Controller.Playlists;
 using MediaBrowser.Model.Library;
 using MediaBrowser.Controller.Providers;
 using MediaBrowser.Model.Drawing;
@@ -62,14 +63,14 @@ public class BadgeEnhancer : IImageEnhancer
             return false;
 
         // Films, épisodes, séries et saisons
-        if (item is not (Movie or Episode or Series or Season))
+        if (item is not (Movie or Episode or Series or Season or Playlist))
             return false;
 
         // Posters et vignettes ; fonds (Backdrop) uniquement pour épisodes/séries/saisons :
         // l'accueil (« Continuer à regarder ») affiche le fond de la série pour ses épisodes.
         return imageType == ImageType.Primary
             || imageType == ImageType.Thumb
-            || (imageType == ImageType.Backdrop && item is not Movie);
+            || (imageType == ImageType.Backdrop && item is not (Movie or Playlist));
     }
 
     /// <summary>
@@ -135,6 +136,7 @@ public class BadgeEnhancer : IImageEnhancer
     {
         try
         {
+            _logger.Debug("EmbyBadges: enhance {0} {1}", imageType, item.Name);
             var config = Plugin.Instance?.Configuration ?? new PluginConfiguration();
             var mediaInfo = BadgeDataExtractor.GetMediaInfo(item, _libraryManager, _appPaths, _userDataManager, _userManager, _logger, Plugin.Instance?.Configuration?.TmdbApiKey, _syncDetector);
 
