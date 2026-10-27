@@ -129,7 +129,7 @@ Puis rechargement forcé du client web (Ctrl+F5). Un changement de partage ou d'
 
 | Etape | Action | Résultat Attendu | Résultat Obtenu | OK ? |
 |-------|--------|-----------------|----------------|------|
-| 1 | Config : décocher `ShowSync`, `ShowPlaylistShare` et `ShowPlaylistProgress`, sauvegarder | — | | |
+| 1 | Config : décocher `ShowSync` et `ShowPlaylistShare`, sauvegarder | — | | |
 | 2 | Redémarrer le pod, purger, ouvrir les pages Films et Playlists | Aucun badge Synchro / playlist | | |
 | 3 | `kubectl logs -n media deployment/emby2 \| grep -i "GetUserItemShares\|index"` | Aucune construction d'index ni appel de partage dans le log Debug | | |
 | 4 | Recocher `ShowPlaylistShare` seul, recharger | Index construit (log Debug) ; pictogrammes de nouveau présents | | |

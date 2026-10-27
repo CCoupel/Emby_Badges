@@ -79,19 +79,22 @@ public class IsSharedPlaylistNonEtiquetéeTests
     public void Null_NonPartagée() => Assert.False(SyncDetector.IsShared(null));
 }
 
-/// <summary>SyncDetector.IndexNeeded : l'index n'existe que si l'un des 3 flags est actif (§13, CA6).</summary>
+/// <summary>
+/// SyncDetector.IndexNeeded en LOT-1 : ShowSync || ShowPlaylistShare ; ShowPlaylistProgress est ignoré
+/// jusqu'au LOT-2 (revue LOT-1, CA6).
+/// </summary>
 public class IndexNeededTests
 {
     [Theory]
     [InlineData(false, false, false, false)]
     [InlineData(true,  false, false, true)]
     [InlineData(false, true,  false, true)]
-    [InlineData(false, false, true,  true)]
+    [InlineData(false, false, true,  false)] // progression seule : pas d'index en LOT-1
     [InlineData(true,  true,  false, true)]
     [InlineData(true,  false, true,  true)]
     [InlineData(false, true,  true,  true)]
     [InlineData(true,  true,  true,  true)]
-    public void IndexNeeded_OuDesTroisFlags(bool sync, bool share, bool progress, bool attendu)
+    public void IndexNeeded_ShowSyncOuShowPlaylistShare(bool sync, bool share, bool progress, bool attendu)
     {
         var cfg = new PluginConfiguration
         {
@@ -101,6 +104,15 @@ public class IndexNeededTests
         };
         Assert.Equal(attendu, SyncDetector.IndexNeeded(cfg));
     }
+
+    [Fact]
+    public void ProgressionSeule_NeDéclenchePasLIndex()
+        => Assert.False(SyncDetector.IndexNeeded(new PluginConfiguration
+        {
+            ShowSync = false,
+            ShowPlaylistShare = false,
+            ShowPlaylistProgress = true,
+        }));
 }
 
 /// <summary>BadgeRenderer.ShareColorOf (§11) : sarcelle sans étiquette active, sinon ColorOf.</summary>
