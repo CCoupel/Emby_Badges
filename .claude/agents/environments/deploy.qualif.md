@@ -46,7 +46,7 @@ ACTUAL_SIZE=$(MSYS_NO_PATHCONV=1 kubectl exec -n media "$NEW_POD" -- stat -c %s 
 
 **Cache d'images** (si le rendu des badges a change et n'est pas visible) — optionnel, a signaler a l'utilisateur :
 ```bash
-kubectl exec -n media deployment/emby2 -- find /config/cache/images -name "*.jpg" -delete
+kubectl exec -n media deployment/emby2 -- find /config/cache/images \( -name "*.jpg" -o -name "*.webp" \) -delete
 ```
 (les deux couches `enhanced-images/` et `resized-images/` sont purgees ; puis hard-refresh du navigateur).
 

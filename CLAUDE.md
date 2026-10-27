@@ -12,8 +12,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Favorites**: heart icon when the item is marked as favorite by the first user
 - **Rating (Note)**: community rating shown on the poster (since v1.2.0)
 - **Synchro (PlaySync)**: sync state of the item in shared playlists tagged for PlaySync — `P` (position), `L` (read), `S` (removed), as letters or as a coloured sync pictogram (see « PlaySync integration »)
+- **Shared playlist (v1.4.0, #5)**: on `Playlist` thumbnails, a sync pictogram when the playlist is shared (teal without an active PlaySync label, otherwise coloured by the strongest label), and the favorites heart when the first user marked the playlist as favorite. Playlists never show the Rating. See « Playlist badges »
 
-Each badge group (Resolution, Language, MultiVersion, Favorites, Rating, Synchro) has independent position, size, margin, and opacity settings. Individual badges within a group share those settings but can be individually enabled/disabled.
+Each badge group (Resolution, Language, MultiVersion, Favorites, Rating, Synchro, Playlist share) has independent position, size, margin, and opacity settings. Individual badges within a group share those settings but can be individually enabled/disabled.
 
 ## Technology Stack
 
@@ -88,12 +89,12 @@ The `.github/workflows/release.yml` CI triggers on `vX.Y.Z` tags, runs `gen_conf
 
 | Method | Role |
 |---|---|
-| `Supports(item, imageType)` | Primary/Thumb images, Movie/Episode items only |
+| `Supports(item, imageType)` | Primary/Thumb images for Movie/Episode/Series/Season/Playlist; Backdrop only for Episode/Series/Season (not Movie, not Playlist) |
 | `GetConfigurationCacheKey(item, imageType)` | Must include ALL state affecting rendering — Emby caches images globally (not per-user) |
 | `EnhanceImageAsync(...)` | Read inputFile → composite badges via SkiaSharp → write outputFile |
 | `GetEnhancedImageSize(...)` | Returns `originalSize` (badges drawn in-canvas, no resize) |
 
-**Cache key completeness is critical.** Missing any field (e.g. `IsFavorite`, `IsFromVirtualLib`) causes stale cached images. The cache key includes: all `GroupConfig` fields (including `Sync`), all `ShowXxx` flags, `MultiVersionTrigger`, `ResolutionIcons`, `AudioLanguages`, `VersionConnectors`, `IsFromVirtualLib`, `IsFavorite`, `DebugMode`, TMDB key presence, and for Synchro: `ShowSync`, `SyncRenderMode`, `ShowSyncPosition/Read/Removed`, `SyncTypes` (the detected state of the item).
+**Cache key completeness is critical.** Missing any field (e.g. `IsFavorite`, `IsFromVirtualLib`) causes stale cached images. The cache key includes: all `GroupConfig` fields (including `Sync`), all `ShowXxx` flags, `MultiVersionTrigger`, `ResolutionIcons`, `AudioLanguages`, `VersionConnectors`, `IsFromVirtualLib`, `IsFavorite`, `DebugMode`, TMDB key presence, and for Synchro: `ShowSync`, `SyncRenderMode`, `ShowSyncPosition/Read/Removed`, `SyncTypes` (the detected state of the item). For playlists (v1.4.0): `GC(PlaylistShare)`, `ShowPlaylistShare`, `IsPlaylist`, `PlaylistShared`, `PlaylistSyncTypes`; the Favorites segments already cover a playlist's heart.
 
 **Favorites limitation:** Images are cached globally — true per-user favorites badges aren't feasible. The plugin checks only `userManager.Users.FirstOrDefault()` (the first/admin user).
 
@@ -121,6 +122,19 @@ The Synchro badge reads the **PlaySync** labels stored on Emby items. It does **
 - **Scope**: images are cached globally, so the Synchro badge is the same for every Emby user, like Favorites. It reflects **all** shared labelled playlists on the server, not only those of the first user.
 - **Latency**: a change in playlist membership or labels is visible after at most 5 min (index TTL), then the Emby image cache must regenerate (the new key changes `enhanced-images`). `resized-images` still requires the manual purge (see « Image Cache »).
 - **Known limitation**: a season or series placed directly in a playlist is not propagated to its parent (only episodes propagate upward).
+
+### Playlist badges (v1.4.0, #5)
+
+Badges drawn on the thumbnail of an Emby `Playlist` item (LOT-1: sharing indicator and favorites heart; the progress counter is LOT-2, not yet implemented).
+
+- **Shared** = the playlist has an owner line (`ManageDelete` in `GetUserItemShares`, see `SyncDetector.OwnerOf`) **and** at least one other member with `ShareLevel >= Read`. The same definition as PlaySync (`SyncDetector.IsShared`), applied to **all** playlists, labelled or not. A playlist without an owner line → "owner not found", never shared.
+- **Pictogram colour**: `SyncBadge` (sync arrows, square `h × h`). Teal `ColorSync (0,120,140)` when no PlaySync label is active; otherwise the colour of the strongest active type (red `Removed` > orange `Read` > green `Position`, see « PlaySync integration »). It ignores `SyncRenderMode` and `ShowSyncPosition/Read/Removed`.
+- **Labels**: read from the playlist's own `Tags` (`EvaluateTags`), independent of the sharing state.
+- **Favorites**: the heart uses the first user (`userManager.Users.FirstOrDefault()`), exactly as for media. Rating is never filled for a playlist, so no rating badge.
+- **No other badge**: resolution, language, versions and sync letters are not computed for a playlist.
+- **Gating**: `SyncDetector.IndexNeeded(config)` = `ShowSync || ShowPlaylistShare` (LOT-1). With both `false`, nothing is read. `ShowSync = false` alone keeps the v1.3.0 behaviour (`GetSyncTypes` returns `None`).
+- **Index rebuild**: `Snapshot.HadItems` records whether the snapshot was built with `ShowSync` on. When `ShowSync` is enabled after the index was built, `GetSyncTypes` forces a background rebuild, at most every 10 s, so the change is taken into account without waiting for the 5 min TTL.
+- **Open points to confirm in QUALIF**: auto-generated playlists ("collage automatique") may carry no badge; check on the real server.
 
 ### Badge positions
 
@@ -176,9 +190,9 @@ Emby has two cache layers that both need clearing when badge rendering changes a
 
 To force a full refresh after config or code changes:
 ```bash
-kubectl exec -n media deployment/emby2 -- find /config/cache/images -name "*.jpg" -delete
+kubectl exec -n media deployment/emby2 -- find /config/cache/images \( -name "*.jpg" -o -name "*.webp" \) -delete
 ```
-Then hard-refresh the browser. Without this, stale cached images persist even when the cache key changes.
+The purge must cover both `.jpg` and `.webp`: the emby2 cache is in webp. Then hard-refresh the browser. Without this, stale cached images persist even when the cache key changes.
 
 ## Repository Conventions
 
