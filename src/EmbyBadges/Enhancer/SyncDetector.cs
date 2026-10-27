@@ -54,7 +54,7 @@ public class SyncDetector
     private readonly object _buildLock = new();
     private volatile bool _dirty;
     private int _rebuilding;
-    private volatile Snapshot _snapshot = new(DateTime.MinValue, new Dictionary<long, SyncTypes>(), new Dictionary<long, PlaylistInfo>(), false, new HashSet<long>());
+    private volatile Snapshot _snapshot = new(DateTime.MinValue, new Dictionary<long, SyncTypes>(), new Dictionary<long, PlaylistInfo>(), false, new HashSet<long>(), new HashSet<(long, long)>());
 
     /// <summary>Instance courante, exposée au point d'entrée d'événements (<see cref="PlaylistEventsEntryPoint"/>).</summary>
     internal static volatile SyncDetector? Current;
@@ -64,10 +64,10 @@ public class SyncDetector
 
     /// <summary>Instantané de l'index : <c>Map</c> = table des médias (v1.3.0, inchangée), <c>Playlists</c> = infos par playlist,
     /// <c>Members</c> = ids de tous les médias présents dans une playlist lue (filtre des événements).</summary>
-    private sealed record Snapshot(DateTime At, Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists, bool HadItems, HashSet<long> Members);
+    private sealed record Snapshot(DateTime At, Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists, bool HadItems, HashSet<long> Members, HashSet<(long owner, long item)> OwnedMembers);
 
     /// <summary>Résultat d'une passe de construction.</summary>
-    private sealed record BuildResult(Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists, bool HadItems, HashSet<long> Members);
+    private sealed record BuildResult(Dictionary<long, SyncTypes> Map, Dictionary<long, PlaylistInfo> Playlists, bool HadItems, HashSet<long> Members, HashSet<(long owner, long item)> OwnedMembers);
 
     /// <summary>Infos d'une playlist : partage, propriétaire, étiquettes propres, progression du propriétaire (lus / total).</summary>
     internal sealed record PlaylistInfo(bool IsShared, long? OwnerId, SyncTypes OwnTypes, int Played, int Total)
@@ -165,10 +165,16 @@ public class SyncDetector
     /// <summary>Marque l'index comme périmé (thread-safe) : reconstruction en tâche de fond après le debounce de 30 s.</summary>
     internal void MarkDirty() => _dirty = true;
 
-    /// <summary>Événement UserDataSaved : filtre puis <see cref="MarkDirty"/>.</summary>
-    internal void OnUserDataSaved(UserDataSaveReason reason, long itemId)
+    /// <summary>
+    /// Événement UserDataSaved : filtre puis <see cref="MarkDirty"/>. Si l'utilisateur de l'événement est connu, seul un
+    /// propriétaire de playlist contenant ce média compte (la progression ne dépend que de lui).
+    /// </summary>
+    internal void OnUserDataSaved(UserDataSaveReason reason, long itemId, long? userInternalId = null)
     {
-        if (PlaylistEventsEntryPoint.ShouldInvalidateOnUserData(reason, itemId, _snapshot.Members)) MarkDirty();
+        var snap = _snapshot;
+        if (!PlaylistEventsEntryPoint.ShouldInvalidateOnUserData(reason, itemId, snap.Members)) return;
+        if (userInternalId is long u && snap.OwnedMembers.Count > 0 && !snap.OwnedMembers.Contains((u, itemId))) return;
+        MarkDirty();
     }
 
     /// <summary>L'item fait-il partie des médias d'une playlist indexée ?</summary>
@@ -247,7 +253,7 @@ public class SyncDetector
             _dirty = false;
             var sw = System.Diagnostics.Stopwatch.StartNew();
             var built = BuildMap();
-            var fresh = new Snapshot(DateTime.UtcNow, built.Map, built.Playlists, built.HadItems, built.Members);
+            var fresh = new Snapshot(DateTime.UtcNow, built.Map, built.Playlists, built.HadItems, built.Members, built.OwnedMembers);
             _snapshot = fresh;
             _logger.Debug("SyncIndex reconstruit : {0} items, {1} playlists, {2} ms", built.Map.Count, built.Playlists.Count, sw.ElapsedMilliseconds);
             return fresh;
@@ -256,7 +262,7 @@ public class SyncDetector
         {
             _logger.Warn("SyncIndex : échec de la reconstruction ({0}) — index précédent conservé", ex.Message);
             // On repousse l'échéance pour ne pas retenter à chaque appel.
-            var kept = new Snapshot(DateTime.UtcNow, previous.Map, previous.Playlists, previous.HadItems, previous.Members);
+            var kept = new Snapshot(DateTime.UtcNow, previous.Map, previous.Playlists, previous.HadItems, previous.Members, previous.OwnedMembers);
             _snapshot = kept;
             return kept;
         }
@@ -270,7 +276,8 @@ public class SyncDetector
         bool wantItems = config?.ShowSync ?? false; // table Items : badge Synchro des médias (v1.3.0)
         bool wantProgress = config?.ShowPlaylistProgress ?? false;
         var members = new HashSet<long>();
-        var result = new BuildResult(map, infos, wantItems, members);
+        var ownedMembers = new HashSet<(long owner, long item)>();
+        var result = new BuildResult(map, infos, wantItems, members, ownedMembers);
         if (_itemRepository == null) return result;
 
         var playlists = _libraryManager
@@ -306,7 +313,7 @@ public class SyncDetector
 
                 int played = 0, total = 0;
                 if (progressNeeded)
-                    (played, total) = ComputeProgress(children, ownerId!.Value, members);
+                    (played, total) = ComputeProgress(children, ownerId!.Value, members, ownedMembers);
 
                 infos[playlist.InternalId] = new PlaylistInfo(shared, ownerId, own, played, total);
             }
@@ -322,7 +329,7 @@ public class SyncDetector
     /// Progression du propriétaire : entrées dossier (série, saison, dossier) développées en médias non-dossier,
     /// dédoublonnage par InternalId, « lu » = <c>GetUserData(owner, media).Played</c>. Remplit aussi <paramref name="members"/>.
     /// </summary>
-    private (int played, int total) ComputeProgress(BaseItem[] children, long ownerId, HashSet<long> members)
+    private (int played, int total) ComputeProgress(BaseItem[] children, long ownerId, HashSet<long> members, HashSet<(long owner, long item)> ownedMembers)
     {
         if (_userDataManager == null) return (0, 0);
         var owner = TryRead(() => _userManager.GetUserById(ownerId));
@@ -332,15 +339,18 @@ public class SyncDetector
         foreach (var child in children)
         {
             members.Add(child.InternalId);
+            ownedMembers.Add((ownerId, child.InternalId));
             if (child is Folder && child is not Playlist)
             {
                 var inner = Try(() => (_libraryManager.GetItemList(new InternalItemsQuery(owner)
                 {
                     ParentIds = new[] { child.InternalId },
                     Recursive = true,
-                    IsFolder = false
+                    IsFolder = false,
+                    IsVirtualItem = false, // exclut les épisodes manquants
+                    IsUnaired = false      // et non diffusés
                 }) ?? Array.Empty<BaseItem>()).ToArray());
-                foreach (var m in inner) { members.Add(m.InternalId); medias.Add(m); }
+                foreach (var m in inner) { members.Add(m.InternalId); ownedMembers.Add((ownerId, m.InternalId)); medias.Add(m); }
             }
             else medias.Add(child);
         }

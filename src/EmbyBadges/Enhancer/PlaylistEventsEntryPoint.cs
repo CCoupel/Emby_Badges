@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Playlists;
@@ -58,22 +58,30 @@ public class PlaylistEventsEntryPoint : IServerEntryPoint
         catch (Exception ex)
         {
             _logger.Warn("EmbyBadges: abonnement aux événements impossible ({0})", ex.Message);
+            Unsubscribe(); // abonnement à mi-chemin : on retire ce qui a déjà été posé
         }
     }
 
     public void Dispose()
     {
-        if (!_subscribed) return;
-        try
-        {
-            _userDataManager.UserDataSaved -= OnUserDataSaved;
-            _playlistManager.PlaylistItemsAdded -= OnPlaylistChanged;
-            _playlistManager.PlaylistItemsRemoved -= OnPlaylistChanged;
-            _libraryManager.ItemAdded -= OnItemAdded;
-            _libraryManager.ItemRemoved -= OnItemRemoved;
-        }
-        catch (Exception ex) { _logger.Debug("EmbyBadges: désabonnement en échec ({0})", ex.Message); }
+        Unsubscribe();
+    }
+
+    /// <summary>Retire tous les gestionnaires, chacun isolément (le retrait d'un gestionnaire non posé est sans effet).</summary>
+    private void Unsubscribe()
+    {
+        SafeRemove(() => _userDataManager.UserDataSaved -= OnUserDataSaved);
+        SafeRemove(() => _playlistManager.PlaylistItemsAdded -= OnPlaylistChanged);
+        SafeRemove(() => _playlistManager.PlaylistItemsRemoved -= OnPlaylistChanged);
+        SafeRemove(() => _libraryManager.ItemAdded -= OnItemAdded);
+        SafeRemove(() => _libraryManager.ItemRemoved -= OnItemRemoved);
         _subscribed = false;
+    }
+
+    private void SafeRemove(Action remove)
+    {
+        try { remove(); }
+        catch (Exception ex) { _logger.Debug("EmbyBadges: désabonnement en échec ({0})", ex.Message); }
     }
 
     private void OnUserDataSaved(object? sender, UserDataSaveEventArgs e)
@@ -82,7 +90,7 @@ public class PlaylistEventsEntryPoint : IServerEntryPoint
         {
             var detector = SyncDetector.Current;
             if (detector == null || e.Item == null) return;
-            detector.OnUserDataSaved(e.SaveReason, e.Item.InternalId);
+            detector.OnUserDataSaved(e.SaveReason, e.Item.InternalId, e.User?.InternalId);
         }
         catch (Exception ex) { _logger.Debug("EmbyBadges: UserDataSaved ignoré ({0})", ex.Message); }
     }
