@@ -1,13 +1,13 @@
-# Release v1.4.0 - Vos playlists partagées se voient sur les affiches
+# Release v1.4.0 - Vos playlists se voient sur les affiches
 
-**Statut** : brouillon (LOT-1 seulement). La section progression (LOT-2) sera ajoutée après son livraison.
+**Statut** : brouillon. LOT-1 et LOT-2 sont dans la release ; la validation QUALIF de LOT-2 reste à faire.
 **Date** : à définir à la publication
 **Version de développement** : 1.4.0 (le numéro de build QUALIF est rapporté par le déploiement)
 
 ## Qualité avant publication
 
-- **Tests unitaires** : 99/99 réussis (`dotnet test`, dernier commit de correction LOT-1).
-- **Revue de code et QA sur QUALIF** : à compléter avant publication.
+- **LOT-1 (partage et favori)** : revue de code approuvée après correctifs des réserves ; QA validée (99/99 tests) ; CI de branche verte ; déployée sur QUALIF 1.4.0.2, chargement sans erreur. Validation visuelle sur QUALIF : à confirmer.
+- **LOT-2 (progression)** : revue de code approuvée (les observations mineures ne bloquent pas) ; tests unitaires 131/131 ; QA validée avec réserves sur la procédure de validation manuelle, à compléter avant l'exécution par l'utilisateur. Déploiement QUALIF 1.4.0.3 : à faire.
 
 ## Nouveautés
 
@@ -16,24 +16,33 @@ Une playlist partagée (un propriétaire et au moins un membre) affiche un picto
 - sarcelle si aucune étiquette PlaySync n'est active ;
 - coloré selon le type le plus fort sinon : rouge (supprimé), orange (lu), vert (position).
 
+### Progression de playlist
+Un compteur `lus/total` s'affiche sur la vignette d'une playlist. Il compte les médias déjà lus par le **propriétaire** de la playlist :
+- gris tant qu'il reste des médias à voir, vert quand tout est lu ;
+- les séries et saisons sont développées en épisodes, et un média présent deux fois compte une fois ;
+- visible sur toutes les playlists qui ont un propriétaire, partagées ou non.
+
 ### Favoris sur les playlists
 Le cœur Favoris s'affiche aussi sur les playlists, comme sur les films et les séries. La note n'est jamais affichée sur une playlist.
 
 ## Réglages
 
-Dans la page de configuration, section « Playlist partagée » :
-- activation de l'indicateur, position (défaut : Haut gauche), taille, marge et opacité.
+Dans la page de configuration :
+- section « Playlist partagée » : activation, position (défaut : Haut gauche), taille, marge et opacité ;
+- section « Progression de playlist » : activation, position (défaut : Bas droite), taille, marge et opacité.
+
+Avec les défauts, le cœur Favoris et le compteur sont tous deux en bas à droite, côte à côte.
 
 ## Prérequis
 
-- Une playlist partagée, avec un propriétaire et au moins un membre.
-- Sans partage, aucune playlist n'affiche de pictogramme. Le pictogramme ne dépend pas de PlaySync : sans étiquette PlaySync, il reste sarcelle.
+- Pour le pictogramme : une playlist partagée, avec un propriétaire et au moins un membre. Le pictogramme ne dépend pas de PlaySync : sans étiquette PlaySync, il reste sarcelle.
+- Pour le compteur : une playlist qui a un propriétaire.
 
 ## Limitations
 
-- **Badges globaux** : comme les favoris, l'état est le même pour tous les utilisateurs d'Emby. Le cœur reflète le premier utilisateur.
+- **Badges globaux** : comme les favoris, l'état est le même pour tous les utilisateurs d'Emby. Le cœur reflète le premier utilisateur, et le compteur reflète le propriétaire de la playlist.
+- **Délai** : un changement de partage ou d'étiquette apparaît au plus 5 minutes plus tard. Un visionnage ou une modification de playlist apparaît au plus tôt 30 secondes plus tard, à l'affichage suivant de la vignette.
 - **Playlists automatiques** : une playlist générée automatiquement pourrait ne pas recevoir de pictogramme (à confirmer sur le serveur).
-- **Délai** : un changement de partage ou d'étiquette apparaît au plus 5 minutes plus tard.
 
 ## Comment mettre à jour
 
