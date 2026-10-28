@@ -3,7 +3,7 @@
 ## Etat courant
 - Version : PROD `v1.4.0` livree le 2026-10-27 sur `emby` (tag `v1.4.0`, merge `530ddf3`, Release GitHub avec `EmbyBadges.dll` 691712 o ; `.prev` = v1.3.0, 672256 o). QUALIF `emby2` en 1.4.0.3 (meme contenu). csproj `<Version>` = `1.4.0` sur `main` (le prochain milestone repasse en `X.Y.Z.0` a l'ouverture de sa branche).
 - Milestone `v1.4.0 - Indicateurs de playlist` (n°2) CLOS — #5 (pictogramme de partage + coeur Favoris sur playlist) et #6 (badge « lus/total » du proprietaire, maj sur evenement ~30 s) fermees. Aucune issue ni milestone ouverts. Branche `main` poussee ; `milestone/v1.4.0` supprimee (local + remote) ; `gh-pages` conservee.
-- Template Claude `v3.27.0` (synchronise le 2026-10-25). Mise a jour disponible (`3347a2e`) non appliquee ; `.claude/commands/init-project.md` contient deja une partie de cette version, non commitee (a regler par `/init-project` option d).
+- Template Claude `v3.29.1` (`3347a2e`, synchronise le 2026-10-28 ; agents ET contextes au registre de `project-config.json`). Agent `deploy` laisse en sonnet/medium malgre l'alerte d'adequation (choix utilisateur). Acces QUALIF/PROD verifies et enregistres (`infrastructure.environments[].access`, statut `ok`).
 - Tests : `tests/EmbyBadges.Tests/` xUnit 131 tests (Synchro + PlaylistShare + PlaylistProgress). Procedures manuelles `tests/procedures/badges/{synchro,playlist}/`.
 - Site marketing a jour v1.4.0 (+ rattrapage v1.3.0), gh-pages `6b322c0`. Release notes datees (v1.3.0 2026-10-22, v1.4.0 2026-10-27).
 
@@ -33,4 +33,5 @@
 - Emby : lecture lancee par erreur (« Spider-Man : Brand New Day ») a retirer de « Reprendre la lecture ».
 - A signaler au mainteneur du template :
   - `/start-session` cite encore `TEAMMATES_PROTOCOL.md` sans suffixe ; `/milestone` n'a pas de mode « start » ; CDP_WORKFLOWS Phase Init ecrit la version avec `echo > csproj` (adapter : `sed` sur `<Version>`).
+  - v3.29.1 : l'en-tete de provenance place en 1re ligne des contextes `commands/context/*.template.md` devient la description des skills `context:*` (liste des skills illisible).
   - Phase 6 : rien ne fait repasser le teamleader sur `main` si le deployer n'envoie pas de `BRANCH REQUEST` (Etape 6 de `deploy.template.md`) ; ajouter un controle au `DEPLOY DONE` (« Branches nettoyees : … »).
