@@ -52,7 +52,7 @@ Must be run before building when the config page changes.
 
 ### Tests
 
-Unit tests (xUnit) live in `tests/EmbyBadges.Tests/` (pure logic: `SyncDetector.EvaluateTags`, `SyncDetector.IsShared`, `BadgeRenderer.LettersOf`/`ColorOf`, cache key). They reach internals via `InternalsVisibleTo`.
+Unit tests (xUnit) live in `tests/EmbyBadges.Tests/` (pure logic: `SyncDetector.EvaluateTags`, `SyncDetector.IsShared`, `BadgeRenderer.LettersOf`/`ColorOf`, cache key; since v1.4.0 `PlaylistShareTests` — `OwnerOf`, `IndexNeeded`, `ShareColorOf` — and `PlaylistProgressTests` — `CountProgress`, `ProgressLabel`, `IsStale`, `ShouldInvalidateOnUserData`). Manual QUALIF procedures: `tests/procedures/` (index `tests/INDEX.md`). They reach internals via `InternalsVisibleTo`.
 
 ```bash
 /mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe test tests/EmbyBadges.Tests/
@@ -70,6 +70,7 @@ See `.claude/agents/environments/deploy.qualif.md` (and `deploy.prod.md`) for th
 - **Source path**: relative (`build/qualif_vX.Y.Z/EmbyBadges-X.Y.Z.a.dll`), not absolute
 - Copy **before** restart; verify DLL size in the **new** pod after restart
 - **Environments**: QUALIF = `emby2`, PROD = `emby` (namespace `media`). Deploy to `emby` only through `/deploy prod`, on explicit user order, from the GitHub Release asset
+- **Web UI**: QUALIF `emby2` = `http://media.coupel.net/emby/web/` (the user logs in; agents never type a password). PROD `emby` URL: not recorded yet
 
 ## Release
 
@@ -115,13 +116,14 @@ The Synchro badge reads the **PlaySync** labels stored on Emby items. It does **
 - **Shared playlists only**: a playlist counts when `IItemRepository.GetUserItemShares` shows an owner line (`ManageDelete`) and at least one other member with `ShareLevel >= Read`. Unshared playlists are ignored (even if labelled).
 - **Types per playlist**: `Position` ← `propager-avancement=OUI`; `Read` ← `propager-lu=OUI`; `Removed` ← `remove-si-lu=OUI` **and** `propager-lu=OUI`. `Removed` is the *effective* state: PlaySync ≥ 1.2.0 makes `remove-si-lu` inert without `propager-lu`.
 - **Union**: an item's `SyncTypes` is the union over all shared playlists that contain it. An episode propagates its types to its season and to its series (done in the index, not in `AggregateEpisodes`).
-- **Index**: `SyncDetector` builds an in-memory snapshot `Dictionary<InternalId, SyncTypes>` in one pass (playlists → shares in one batch → children of labelled shared playlists). Lookups are O(1) when computing the cache key. TTL `SyncIndexTtl` = 5 min.
+- **Index**: `SyncDetector` builds an in-memory snapshot `Dictionary<InternalId, SyncTypes>` in one pass (playlists → shares in one batch → children of labelled shared playlists). Lookups are O(1) when computing the cache key. TTL `SyncIndexTtl` = 5 min, shortened to 30 s after a relevant Emby event (see « Playlist badges »). Since v1.4.0 the same snapshot also holds per-playlist data (`PlaylistInfo`).
+  - The rebuild is logged as « SyncIndex reconstruit » at **Debug** level: visible only with Emby's server debug logging (`EnableDebugLevelLogging`, Dashboard → Logs), not with the plugin's `DebugMode`.
   - First build: blocking on the request thread (other calls see the empty index meanwhile).
   - Later rebuilds (TTL expired): the previous snapshot is served, the rebuild runs in the background (`Task.Run`, single flight). A failed rebuild is logged at Warn and keeps the previous snapshot.
   - Children are read in this order, stopping at the first non-empty result: (1) each user with access to the playlist, by decreasing share level (owner first), via `GetChildren(new InternalItemsQuery(user))`; (2) a read without user; (3) fallback `GetItemList(ListIds = [playlist])`. Reading without a user alone returns empty for PlaySync's playlists (observed by PlaySync, U11), hence the owner-first order.
-- **Gating**: `ShowSync = false` → `GetSyncTypes` returns `None` before any call, and the index is never built (CA11).
+- **Gating**: `ShowSync = false` → `GetSyncTypes` returns `None` before any call (CA11). The index itself is built only if `SyncDetector.IndexNeeded(config)` is true (see « Playlist badges » for the three flags).
 - **Scope**: images are cached globally, so the Synchro badge is the same for every Emby user, like Favorites. It reflects **all** shared labelled playlists on the server, not only those of the first user.
-- **Latency**: a change in playlist membership or labels is visible after at most 5 min (index TTL), then the Emby image cache must regenerate (the new key changes `enhanced-images`). `resized-images` still requires the manual purge (see « Image Cache »).
+- **Latency**: a change in labels or shares is visible after at most 5 min (index TTL); a change in playlist membership after ~30 s (event, see « Playlist badges »), then the Emby image cache must regenerate (the new key changes `enhanced-images`). `resized-images` still requires the manual purge (see « Image Cache »).
 - **Known limitation**: a season or series placed directly in a playlist is not propagated to its parent (only episodes propagate upward).
 
 ### Playlist badges (v1.4.0, #5 sharing, #6 progress)
@@ -180,7 +182,7 @@ src/EmbyBadges/
 ├── Enhancer/
 │   ├── BadgeEnhancer.cs         # IImageEnhancer — auto-discovered by Emby
 │   ├── BadgeDataExtractor.cs    # Extracts resolution, languages, versions, VL connectors
-│   ├── SyncDetector.cs          # PlaySync labels + shares → SyncTypes; playlist progress; in-memory index (TTL 5 min)
+│   ├── SyncDetector.cs          # PlaySync labels + shares → SyncTypes; playlist progress; in-memory index (TTL 5 min, 30 s after an event)
 │   └── PlaylistEventsEntryPoint.cs # IServerEntryPoint — Emby events → SyncDetector.MarkDirty (v1.4.0)
 ├── ImageProcessing/
 │   ├── BadgeRenderer.cs         # SkiaSharp rendering; badge types: PngBadge, TextBadge, HeartBadge, SyncBadge
@@ -192,6 +194,13 @@ tests/EmbyBadges.Tests/          # xUnit — pure logic (see « Tests »)
 ```
 
 Emby SDK DLLs in `libs/` use `<HintPath>` with `<Private>false</Private>` (present at Emby runtime, not bundled). Copy from `../Emby_Virtuallib/libs/` or a local Emby install.
+
+## Emby web UI (Chrome)
+
+Rules for any agent driving the user's Emby in Chrome (screenshots, visual checks):
+- Clicking the **centre** of a poster **starts playback**: open an item's page from the poster's edge or title, never start a playback.
+- Never open or capture the Emby Dashboard, nor the plugin's TMDB API key.
+- The user logs in; an agent never types a password.
 
 ## Image Cache
 

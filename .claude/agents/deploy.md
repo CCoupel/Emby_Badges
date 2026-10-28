@@ -36,6 +36,9 @@ python3 gen_config_page.py
 "$DOTNET" build src/EmbyBadges/EmbyBadges.csproj --configuration Release \
   -p:Version=$VERSION --output "$BUILD_DIR/tmp"
 # Verifier "0 Erreur(s)" — sinon BUILD FAILED (Probleme : compilation)
+# Sous WSL, dotnet.exe est un binaire Windows : --output doit recevoir un chemin Windows
+# (--output "$(wslpath -w "$BUILD_DIR/tmp")"), sinon la DLL n'est pas ecrite a l'endroit attendu.
+# Verifier la presence de $BUILD_DIR/tmp/EmbyBadges.dll avant la copie.
 
 # 3c. Artefact candidat, nomme avec le `a`
 cp "$BUILD_DIR/tmp/EmbyBadges.dll" "$BUILD_DIR/EmbyBadges-$VERSION.dll"
