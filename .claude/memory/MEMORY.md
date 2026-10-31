@@ -3,7 +3,7 @@
 ## Etat courant
 - Version : PROD `v1.4.0` livree le 2026-10-27 sur `emby` (tag `v1.4.0`, merge `530ddf3`, Release GitHub avec `EmbyBadges.dll` 691712 o ; `.prev` = v1.3.0, 672256 o). QUALIF `emby2` en 1.4.0.3 (meme contenu). csproj `<Version>` = `1.4.0` sur `main` (le prochain milestone repasse en `X.Y.Z.0` a l'ouverture de sa branche).
 - Milestone `v1.4.0 - Indicateurs de playlist` (n°2) CLOS — #5 (pictogramme de partage + coeur Favoris sur playlist) et #6 (badge « lus/total » du proprietaire, maj sur evenement ~30 s) fermees. Aucune issue ni milestone ouverts. Branche `main` poussee ; `milestone/v1.4.0` supprimee (local + remote) ; `gh-pages` conservee.
-- Template Claude `v3.29.1` (`3347a2e`, synchronise le 2026-10-28 ; agents ET contextes au registre de `project-config.json`). Agent `deploy` laisse en sonnet/medium malgre l'alerte d'adequation (choix utilisateur). Acces QUALIF/PROD verifies et enregistres (`infrastructure.environments[].access`, statut `ok`).
+- Template Claude `v3.29.2` (`a4276ee`, synchronise le 2026-10-31, commit `8514793` pousse ; v3.29.2 = etape BRANCHES dans `/end-session` + lecture seule dans `/start-session` ; agents ET contextes au registre de `project-config.json`). Agent `deploy` laisse en sonnet/medium malgre l'alerte d'adequation (choix utilisateur). Acces QUALIF/PROD verifies et enregistres (`infrastructure.environments[].access`, statut `ok`).
 - Tests : `tests/EmbyBadges.Tests/` xUnit 131 tests (Synchro + PlaylistShare + PlaylistProgress). Procedures manuelles `tests/procedures/badges/{synchro,playlist}/`.
 - Site marketing a jour v1.4.0 (+ rattrapage v1.3.0), gh-pages `6b322c0`. Release notes datees (v1.3.0 2026-10-22, v1.4.0 2026-10-27).
 
@@ -26,6 +26,7 @@
 - Debug serveur actif sur `emby2` depuis le 2026-10-27 (inactif sur `emby`).
 
 ## A verifier / prochaine session
+- `.claude/workflow-state.json` desormais tracke (commit de fin de session 2026-10-31), conformement a `gitignore-for-projects` l.59.
 - Non verifie en QUALIF (validations utilisateur sans procedure detaillee) : badge sur les playlists a **collage automatique** ; total d'une serie avec episodes manquants (`IsVirtualItem`/`IsUnaired`) ; validation visuelle CA1–CA11 du badge Synchro (v1.3.0).
 - Avertissement de build CS0414 : `PlaylistEventsEntryPoint._subscribed` jamais lu (a nettoyer).
 - Ecarts infra differes : E4 `scripts/ci.sh` n'execute pas `dotnet test` ; E5 `release.yml` non reduit a `bash scripts/ci.sh` ; epinglage des actions par SHA.

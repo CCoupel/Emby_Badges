@@ -1,0 +1,154 @@
+{
+  "type": "FEATURE",
+  "description": "Milestone v1.4.0 - Indicateurs de playlist : #5 indicateur de partage sur les playlists, #6 progression de lecture sur la playlist",
+  "status": "completed",
+  "branch": "milestone/v1.4.0",
+  "version": "1.4.0",
+  "started_at": "2026-10-27T15:05:00Z",
+  "updated_at": "2026-10-27T17:40:00Z",
+  "cycles": 3,
+  "issue_nums": [
+    5,
+    6
+  ],
+  "milestone_num": 2,
+  "plan": ".claude/workflow/plan-v1.4.0.md",
+  "init_sha": "f3b57cf",
+  "gate2": {
+    "validated": true,
+    "H1": "fond gris, vert quand tout est lu",
+    "H2": "partage TopLeft, progression BottomRight",
+    "H3": "AMENDE : badge Favoris (premier utilisateur) affiche aussi sur les playlists ; pas de Note"
+  },
+  "lots": {
+    "current": null,
+    "items": {
+      "LOT-1": {
+        "status": "completed",
+        "issues": [
+          5
+        ],
+        "qualif": "1.4.0.2",
+        "sha": "a9cc576",
+        "gate_lot": "valide par utilisateur sans test detaille",
+        "open_point": "collage automatique non verifie",
+        "ci_sha": "2abba8e",
+        "ci_run": "40535015752"
+      },
+      "LOT-2": {
+        "status": "completed",
+        "issues": [
+          6
+        ],
+        "qualif": "1.4.0.3",
+        "sha": "bac6791",
+        "gate_lot": "valide par utilisateur",
+        "ci_sha": "4a9111f",
+        "ci_run": "40536812014"
+      }
+    }
+  },
+  "phases": {
+    "clarification": {
+      "status": "completed",
+      "skipped": false
+    },
+    "plan": {
+      "status": "completed",
+      "report": "_work/reports/planner-20261027-160924.md",
+      "handoff": "_work/handoff/planner-20261027-160924.md",
+      "timestamp": "2026-10-27T15:20:00Z"
+    },
+    "spike-s1": {
+      "status": "completed",
+      "verdict": "GO (b par prudence)",
+      "report": "_work/reports/deployer-20261027-172500.md",
+      "sha": "2ab9700"
+    },
+    "dev-plugin": {
+      "status": "completed",
+      "sha": "cd09e24",
+      "commits": [
+        "3c5d159",
+        "fd0b1d3",
+        "cd09e24"
+      ],
+      "handoff": "_work/handoff/dev-plugin-20261027-192500.md"
+    },
+    "test-writer": {
+      "status": "completed",
+      "sha": "e20c809",
+      "note": "procedure LOT-2 completee (reserve QA levee)"
+    },
+    "review": {
+      "status": "completed",
+      "verdict": "APPROUVE (4 mineurs)",
+      "report": "_work/reports/code-review-20261027-181500.md"
+    },
+    "qa": {
+      "status": "completed",
+      "verdict": "VALIDATED WITH RESERVATIONS (procedure)",
+      "report": "_work/reports/qa-20261027-165645.md"
+    },
+    "doc": {
+      "status": "completed",
+      "sha": "359b8bd",
+      "commits": [
+        "2abba8e",
+        "275cf1d",
+        "4a9111f",
+        "359b8bd"
+      ]
+    },
+    "deploy-qualif": {
+      "status": "completed",
+      "version": "1.4.0.3",
+      "sha": "bac6791",
+      "report": "_work/reports/deployer-20261027-180700.md",
+      "steps": {
+        "build": {
+          "status": "completed"
+        },
+        "publish": {
+          "status": "completed"
+        },
+        "deploy": {
+          "status": "completed"
+        }
+      }
+    },
+    "deploy-prod": {
+      "status": "completed",
+      "merge_sha": "530ddf3",
+      "tag": "v1.4.0",
+      "release": "https://github.com/CCoupel/Emby_Badges/releases/tag/v1.4.0",
+      "dll_size": 691712,
+      "report": "_work/reports/deployer-20261027-190000.md",
+      "steps": {
+        "publish": {
+          "status": "completed"
+        },
+        "deploy": {
+          "status": "completed"
+        }
+      }
+    }
+  },
+  "contracts_sha": "a97af8a",
+  "lot2_reminders": [
+    "Re-ajouter ShowPlaylistProgress a IndexNeeded et a la cle de cache, avec son UI (revue LOT-1)"
+  ],
+  "doc_todo": [
+    "LOT-2: latence reelle = 30 s + 2 requetes image (reconstruction paresseuse)",
+    "notes de version: retirer review/QA en attente"
+  ],
+  "followups": [
+    "CS0414 PlaylistEventsEntryPoint._subscribed jamais lu (warning)"
+  ],
+  "gate4": {
+    "validated": true,
+    "at": "2026-10-27T16:02:00Z",
+    "by": "utilisateur: go en prod"
+  },
+  "milestone_closed": true
+}
