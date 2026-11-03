@@ -21,7 +21,6 @@ obj/
 .vs/
 .idea/
 *.suo
-*.user
 
 # NuGet
 *.nupkg
@@ -50,3 +49,4 @@ MARKETING/
 .claude/skills/milestone-panel/
 .claude/worktrees/
 .claude/workflow/
+PRIVATE/

@@ -76,3 +76,9 @@ Copier `dist/EmbyBadges.dll` dans le dossier `plugins/` du serveur Emby (à la r
 ## Développement
 
 Voir [CLAUDE.md](CLAUDE.md) pour les instructions de build, déploiement et architecture.
+
+## Licence
+
+Copyright (C) 2026 ccoupel
+
+Distribue sous licence GPL-3.0-or-later — voir [LICENSE](LICENSE).

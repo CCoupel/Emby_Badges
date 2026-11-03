@@ -8,7 +8,7 @@
 ## Prérequis
 
 - [ ] Environnement : QUALIF (`emby2`, namespace `media`), DLL candidate 1.4.0 (LOT-2) déployée via `/deploy qualif`
-- [ ] `export KUBECONFIG=private/kubeconfig.yml`
+- [ ] `export KUBECONFIG=PRIVATE/kubeconfig.yml`
 - [ ] 2 utilisateurs Emby : `U1` (propriétaire, premier utilisateur) et `U2` (membre)
 - [ ] Médias : films `F1`..`F5` ; une série `SER` de 3 épisodes `E1`..`E3`
 - [ ] Playlists (créées par U1) :

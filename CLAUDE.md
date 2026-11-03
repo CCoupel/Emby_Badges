@@ -64,7 +64,7 @@ Config key: `commands.test` in `.claude/project-config.json`.
 
 See `.claude/agents/environments/deploy.qualif.md` (and `deploy.prod.md`) for the full deploy sequence with all critical rules. Key points:
 
-- **Kubeconfig**: `export KUBECONFIG=private/kubeconfig.yml` (gitignored, required)
+- **Kubeconfig**: `export KUBECONFIG=PRIVATE/kubeconfig.yml` (gitignored, required)
 - **Destination path**: `/config/plugins/EmbyBadges.dll` — root of plugins folder, **not** a subdirectory
 - **`MSYS_NO_PATHCONV=1`**: required on Git Bash/Windows for all kubectl commands with absolute Linux paths
 - **Source path**: relative (`build/qualif_vX.Y.Z/EmbyBadges-X.Y.Z.a.dll`), not absolute
@@ -214,10 +214,34 @@ kubectl exec -n media deployment/emby2 -- find /config/cache/images \( -name "*.
 ```
 The purge must cover both `.jpg` and `.webp`: the emby2 cache is in webp. Then hard-refresh the browser. Without this, stale cached images persist even when the cache key changes.
 
+## Éléments privés — dossier `PRIVATE/`
+
+**Tout élément privé qui ne doit jamais être commité se range dans `PRIVATE/`** (racine du projet, gitignoré) :
+accès aux environnements (kubeconfig, tokens Kubernetes et de comptes de service, clés SSH, JSON de compte
+cloud, certificats `*.pem`/`*.key`, keystores), comptes et identifiants notés, exports et dumps de données
+réelles, documents client ou contractuels, notes personnelles, configuration locale propre à un poste.
+
+| Élément | Emplacement |
+|---------|-------------|
+| Élément privé durable (voir ci-dessus) | `PRIVATE/` (ex. `PRIVATE/k8s/kubeconfig-prod`, `PRIVATE/ssh/deploy_key`) |
+| Variables lues par `/deploy` (globales, par environnement) | `.env`, `.claude/agents/environments/<env>.env` — emplacements fixes sourcés par les scripts, **pas** dans `PRIVATE/` ; une variable qui désigne un fichier d'accès pointe dans `PRIVATE/` (ex. `KUBECONFIG=PRIVATE/k8s/kubeconfig-prod`) |
+| Fichier temporaire de travail | `_work/tmp/` (purgé, pas un stockage durable) |
+
+- Avant de créer un fichier contenant une donnée privée : le placer dans `PRIVATE/` ; le code et la config trackés
+  ne référencent `PRIVATE/` que par chemin relatif, jamais par copie de son contenu.
+- Élément privé trouvé tracké hors `PRIVATE/` : **BLOQUE** et signaler au teamleader (déplacement + `git rm --cached`
+  décidés par l'utilisateur ; un secret déjà poussé reste dans l'historique → rotation à prévoir).
+- Ne jamais retirer `PRIVATE/` du `.gitignore` ni forcer son ajout (`git add -f`).
+- Le contenu attendu de `PRIVATE/` est établi par `/init-project` (Étape 10b) ; un worktree n'en hérite pas —
+  copier depuis le checkout principal ce qui est nécessaire, comme pour `.env`.
+
+---
+
+
 ## Repository Conventions
 
 - Code comments and variable names may be in French
-- `private/` is gitignored — kubeconfig and other secrets live there
+- `PRIVATE/` is gitignored — kubeconfig and other secrets live there (see « Éléments privés »)
 - `libs/` is committed intentionally for CI builds
 
 ---
@@ -226,22 +250,24 @@ The purge must cover both `.jpg` and `.webp`: the emby2 cache is in webp. Then h
 
 | Nom | Rôle | Fichier | Spawn |
 |-----|------|---------|-------|
-| `planner` | Plan d'implémentation + contrats API | `.claude/agents/implementation-planner.template.md` | permanent |
-| `dev-plugin` | Plugin (Emby Media Server plugin, C# / .NET 6) | `.claude/agents/dev-plugin.template.md` | permanent |
-| `test-writer` | Scripts de tests + procédures QA | `.claude/agents/test-writer.template.md` | permanent |
-| `code-reviewer` | Revue de code | `.claude/agents/code-reviewer.template.md` | permanent |
-| `qa` | Exécution des tests et validation | `.claude/agents/qa.template.md` | permanent |
-| `doc-updater` | Documentation | `.claude/agents/doc-updater.template.md` | permanent |
-| `deployer` | Build + Publication + Déploiement QUALIF/PROD | `.claude/agents/deploy.template.md` | permanent |
+| `planner` | Plan d'implémentation + contrats API | `.claude/agents/implementation-planner.template.md` | socle |
+| `dev-plugin` | Plugin (Emby Media Server plugin, C# / .NET 6) | `.claude/agents/dev-plugin.template.md` | milestone |
+| `test-writer` | Scripts de tests + procédures QA | `.claude/agents/test-writer.template.md` | milestone |
+| `code-reviewer` | Revue de code | `.claude/agents/code-reviewer.template.md` | milestone |
+| `qa` | Exécution des tests et validation | `.claude/agents/qa.template.md` | milestone |
+| `doc-updater` | Documentation | `.claude/agents/doc-updater.template.md` | milestone |
+| `deployer` | Build + Publication + Déploiement QUALIF/PROD | `.claude/agents/deploy.template.md` | socle |
 | `security` | Audit sécurité | `.claude/agents/security.template.md` | ponctuel |
 | `infra` | Infrastructure (Kubernetes / CI — pas de Dockerfile ni Helm) | `.claude/agents/infra.template.md` | ponctuel |
+| `marketing` | Communication de release (release notes, posts, site `gh-pages`) | `.claude/agents/marketing-release.template.md` | ponctuel |
 
 > **Fichier** pointe vers le `.template.md` — géré par sync, toujours présent. Un compagnon
 > `.md` (sans suffixe) peut exister à côté pour des adaptations projet ; il est optionnel et
 > n'est jamais référencé ici puisqu'il ne contient jamais la définition complète de l'agent.
 
-> **permanent** = spawné au `/start-session`, reste en IDLE toute la session.  
-> **ponctuel** = spawné à la demande par la commande dédiée, fermé après DONE.
+> **Spawn** (`agents/context/MILESTONE_CADRAGE.md` 4.1) : `socle` = au `/start-session`, toujours ; `milestone` = si
+> l'agent est dans la team du milestone, validée au GATE 2 (la team d'un milestone en cours est respawnée au
+> `/start-session`) ; `ponctuel` = à la demande, puis arrêté. Valeur historique `permanent` = `socle`.
 
 > Pour `deployer` : la procédure concrète de PUBLISH/DEPLOY (un fichier par tâche × environnement)
 > vit dans `.claude/agents/environments/{publish,deploy}.<env>.md` — voir `agents/deploy.md`
@@ -265,7 +291,7 @@ Tu **coordonnes et dispatches**. Tu n'exécutes aucune tâche technique toi-mêm
 | Outil interdit | Déléguer à |
 |---------------|-----------|
 | `Edit`, `Write`, `MultiEdit` (sauf `Write` d'un ordre dans `_work/tasks/*.md` et de l'état `.claude/workflow-state.json`, `.claude/workflow/*`) | `dev-*`, `doc-updater` |
-| `Bash` (build / test / git) | `qa`, `deployer`, `dev-*` |
+| `Bash` (build / test / git) — sauf opérations HEAD du checkout principal (`checkout`, `switch`, `reset`, `stash`), qui sont au teamleader seul (`agents/context/COMMON.md` « Branche Courante ») | `qa`, `deployer`, `dev-*` |
 | `Read` (code applicatif) | `code-reviewer`, `planner` |
 | `Glob`, `Grep` (recherche code) | `planner`, `dev-*` |
 
@@ -277,8 +303,15 @@ Tu **coordonnes et dispatches**. Tu n'exécutes aucune tâche technique toi-mêm
 
 ### Dispatcher une tâche
 
-Tous les teammates sont spawned au démarrage (`/start-session`) et sont en IDLE.
-**Pendant la session : uniquement `SendMessage` — jamais de spawn.**
+Les agents `socle` sont spawnés au démarrage (`/start-session`) ; la team du milestone l'est au GATE 2 (`agents/context/MILESTONE_CADRAGE.md`). Tous attendent en IDLE.
+**Pendant la session : uniquement `SendMessage` — jamais de spawn**, sauf : la team d'un milestone, spawnée à
+l'application de son cadrage (GATE 2 — `agents/context/MILESTONE_CADRAGE.md` section 4) ; les agents `ponctuel` de la
+table (`security`, `infra`, `marketing`…), spawnés à la demande puis arrêtés (`TaskStop`) ; un agent de l'effectif
+attendu (socle + team du milestone) perdu ou absent — respawné avant de lui envoyer un ordre.
+
+**Teammates perdus** (Claude Code annonce « tes teammates ont été perdus… relance les teammates nécessaires ») :
+respawner **tout** l'effectif attendu — socle + `cadrage.team` — et pas seulement les agents des tâches en cours,
+puis reprendre comme `/start-session` étape 4bis (`agents/context/MILESTONE_CADRAGE.md` 4.2).
 
 ```
 SendMessage({ to: "<nom-canonique>", content: "<tâche complète>" })

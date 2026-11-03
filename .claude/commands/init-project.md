@@ -63,6 +63,9 @@ jamais du texte brut listant des lettres dans le chat :
     |              + milestone v0.1.0 et issues de base (nouveau projet avec remote GitHub)
     v
 [AUDIT CONTEXTE] --> commit d'init puis /context-audit (audit complet)
+    |
+    v
+[PUBLICATION] --> commit des corrections de l'audit, report sur main et push (sans question)
 ```
 
 > La phase **FETCH TEMPLATE** est toujours executee en premier.
@@ -477,16 +480,28 @@ registry_sync() {
 
 # registry_report — tableau final des teammates : version deployee, etat, compagnon
 registry_report() {
-  local name source tag pinned sha teammate etat comp n gtag
-  echo "| Teammate | Fichier | Source | Version | Etat | Compagnon |"
-  echo "|----------|---------|--------|---------|------|-----------|"
+  local name source tag pinned sha teammate etat comp n gtag line spawn
+  echo "| Teammate | Fichier | Source | Version | Etat | Compagnon | Spawn |"
+  echo "|----------|---------|--------|---------|------|-----------|-------|"
   jq -r '.agents.registry[]? | [.name, .source, .tag, (.pinned // false), .sha256] | @tsv' "$CFG" |
   while IFS=$'\t' read -r name source tag pinned sha; do
     # Nom canonique (SendMessage) lu dans la table "Agents Disponibles" de CLAUDE.md
     # (a defaut — agent hors table, ex. teamleader — le nom du fichier ; generic = template commun des instances)
-    teammate=$(grep '^| ' CLAUDE.md 2>/dev/null | grep -F ".claude/agents/${name}.template.md" \
-      | head -1 | cut -d'|' -f2 | tr -d ' `')
-    [ "$name" = "generic" ] && teammate="(commun aux instances)"
+    line=$(grep '^| ' CLAUDE.md 2>/dev/null | grep -F ".claude/agents/${name}.template.md" | head -1)
+    teammate=$(cut -d'|' -f2 <<<"$line" | tr -d ' `')
+    # Spawn = colonne "Spawn" de la meme ligne (MILESTONE_CADRAGE.md 4.1) : socle (ou historique permanent) →
+    # au /start-session ; milestone → team du milestone (GATE 2) ; ponctuel ou agent hors table (pr-reviewer...)
+    # → a la demande du teamleader ; teamleader/cdp = le Claude principal
+    case "$(cut -d'|' -f5 <<<"$line" | tr -d ' ')" in
+      socle|permanent) spawn="au /start-session" ;;
+      milestone)       spawn="si dans la team du milestone" ;;
+      *)               spawn="a la demande du teamleader" ;;
+    esac
+    case "$name" in
+      teamleader) teammate="team-lead"; spawn="— (Claude principal, jamais spawne)" ;;
+      cdp) teammate="team-lead (role CDP)"; spawn="— (spec lue par le Claude principal)" ;;
+      generic) teammate="(commun aux instances)"; spawn="— (voir instances)" ;;
+    esac
     # Version = version de la copie deployee ; la cible (FETCH_TAG) n'est affichee que si elle differe en contenu
     if [ -f "TEMPLATE_claude/$source" ] && [ "$(src_sha "TEMPLATE_claude/$source")" = "$sha" ]; then etat="🟢 a jour"
     elif [ "$pinned" = "true" ]; then etat="📌 epingle (${FETCH_TAG} dispo)"
@@ -497,13 +512,15 @@ registry_report() {
     elif [ "$source" = "templates/dev-generic.md" ] || jq -e --arg n "$name" '.agents.registry[] | select(.name==$n) | .paths' "$CFG" >/dev/null; then
       comp="✗ ${name}.md manquant (obligatoire)"
     else comp="—"; fi
-    echo "| ${teammate:-$name} | ${name}.template.md | ${source} | ${tag} | ${etat} | ${comp} |"
+    echo "| ${teammate:-$name} | ${name}.template.md | ${source} | ${tag} | ${etat} | ${comp} | ${spawn} |"
   done
   # Instances d'agents generiques : template commun generic + specification (compagnon obligatoire)
   gtag=$(jq -r '.agents.registry[]? | select(.name=="generic") | .tag' "$CFG")
-  jq -r '.agents.generic[]?.name' "$CFG" | while read -r n; do
+  jq -r '.agents.generic[]? | [.name, (.spawn // "socle")] | @tsv' "$CFG" | while IFS=$'\t' read -r n spawn; do
     comp=$([ -s ".claude/agents/generic.${n}.md" ] && echo "✓ generic.${n}.md (spec)" || echo "✗ generic.${n}.md manquante")
-    echo "| ${n} | generic.template.md | agents/generic.md | ${gtag:-—} | (voir generic) | ${comp} |"
+    case "$spawn" in socle|permanent) spawn="au /start-session" ;; milestone) spawn="si dans la team du milestone" ;;
+                     *) spawn="a la demande du teamleader" ;; esac
+    echo "| ${n} | generic.template.md | agents/generic.md | ${gtag:-—} | (voir generic) | ${comp} | ${spawn} |"
   done
   ctx_report
 }
@@ -574,8 +591,12 @@ Le **rapport final** de chaque chemin (init, option d, reinstallation, migration
 `registry_report` : un tableau des teammates avec la version **actuelle** de chaque agent (celle de la copie
 deployee — un agent dont le template n'a pas change est re-tamponne a la version synchronisee, la version de son
 dernier changement restant dans `changed_in`), son etat (`🟢 a jour` ; `⚠ en retard → <cible>` — ex. sync partielle ou annulee ; `📌 epingle (<cible>
-dispo)`, la cible etant la version fetchee) et la presence d'un compagnon `<nom>.md`
-(adaptations projet ; pour une instance generique, sa specification `generic.<nom>.md`). Il est suivi du tableau
+dispo)`, la cible etant la version fetchee), la presence d'un compagnon `<nom>.md`
+(adaptations projet ; pour une instance generique, sa specification `generic.<nom>.md`) et le **mode de spawn**
+(colonne `Spawn` de la table « Agents Disponibles » de `CLAUDE.md`, `agents.generic[].spawn` pour une instance) :
+`au /start-session` (socle), `si dans la team du milestone` (milestone — `agents/context/MILESTONE_CADRAGE.md` 4.1),
+`a la demande du teamleader` (ponctuel, ou agent absent de la table comme
+`pr-reviewer`), ou `— (Claude principal)` pour `teamleader`/`cdp`, qui ne sont pas des teammates spawnes. Il est suivi du tableau
 des **contextes partages** (`ctx_report`) : meme registre sous la cle `contexts.registry[]` de
 `project-config.json`, memes champs (`name` = chemin sans `.md`, ex. `agents/context/COMMON`), meme en-tete de
 provenance en premiere ligne de la copie, memes statuts que les agents (sans epinglage).
@@ -1036,6 +1057,7 @@ Technologies detectees :
 - Database : PostgreSQL (prisma avec provider postgresql)
 - CI/CD : GitHub Actions (.github/workflows/)
 - Tests : Vitest, Playwright
+- Licence : MIT (LICENSE)   ← ou « non detectee — posee a l'Etape 1b »
 
 AskUserQuestion : "Comment veux-tu initialiser le projet ?"
 - Initialiser avec cette configuration (Recommande) — utilise directement les technologies
@@ -1287,6 +1309,133 @@ Chaque ligne de la fiche porte sa provenance entre crochets : `[brief]`, `[preci
 
 ---
 
+## Etape 1b : Licence
+
+Choisir une licence est difficile sans reperes : l'etape commence par demander **comment** la definir, et
+propose un guide (synthese + jeu de questions) plutot qu'une liste brute d'identifiants.
+
+### Detection
+
+Avant toute question, chercher une licence deja posee :
+
+```bash
+ls LICENSE* LICENCE* COPYING* 2>/dev/null                       # fichier de licence
+jq -r '.license // empty' package.json 2>/dev/null              # Node
+grep -E '^\s*license\s*=' Cargo.toml pyproject.toml 2>/dev/null # Rust / Python
+```
+
+Identifier l'identifiant SPDX depuis l'en-tete du fichier (« MIT License », « Apache License Version 2.0 »,
+« GNU AFFERO GENERAL PUBLIC LICENSE Version 3 »...). Licence detectee → la lister avec les technologies
+detectees (« Licence : MIT (LICENSE) ») et poser seulement AskUserQuestion « Conserver la licence MIT ? » :
+Conserver (Recommande) / Changer de licence (→ question ci-dessous). Fichier et manifeste en desaccord
+(ex. `LICENSE` MIT, `package.json` ISC) → le signaler et demander laquelle fait foi.
+
+> Exception a « Initialiser avec cette configuration — aucune question supplementaire » (Etape 0) : la licence
+> n'est pas une technologie deductible du code. Non detectee → cette etape est posee quand meme.
+> Brief (Option a-bis) : licence nommee par le brief = `deduit` ; sinon `manquant` → cette etape, telle quelle.
+
+### Question d'entree
+
+AskUserQuestion : "Comment definir la licence du projet ?"
+- M'aider a choisir (Recommande) — synthese des principales licences open source puis 3-4 questions pour
+  aboutir a une recommandation argumentee
+- Je fournis la licence — identifiant SPDX (ex. `MIT`, `Apache-2.0`, `GPL-3.0-or-later`) ou chemin d'un
+  fichier de licence existant, saisi via « Autre »
+- Proprietaire (tous droits reserves) — pas de licence open source : code non reutilisable sans accord ecrit
+- Decider plus tard — aucun fichier `LICENSE` cree ; rappel dans le message de fin (sans licence, le code
+  publie reste par defaut « tous droits reserves »)
+
+« Je fournis » : identifiant SPDX inconnu → le signaler et reposer la question ; chemin → lire le fichier,
+en deduire l'identifiant (ou `LicenseRef-custom` pour un texte maison) et le copier en `LICENSE` s'il n'est
+pas deja a la racine.
+
+### Guide de selection
+
+**1. Synthese** — afficher dans le chat (seul affichage texte de l'etape, il sert de reference aux questions) :
+
+| Licence | Famille | Obligation principale pour qui redistribue | Brevets | Usage typique |
+|---------|---------|---------------------------------------------|---------|---------------|
+| MIT | Permissive | Garder la notice de copyright et la licence | Non explicite | Bibliotheques, outils, adoption maximale (npm, Rails...) |
+| BSD-3-Clause | Permissive | Idem MIT + interdiction d'utiliser le nom des auteurs pour promouvoir un derive | Non explicite | Monde academique, systemes (BSD, Django) |
+| Apache-2.0 | Permissive | Notice + mention des fichiers modifies + fichier `NOTICE` s'il existe | **Licence et clause de retorsion** explicites | Projets d'entreprise, nombreux contributeurs (Kubernetes, Android) |
+| MPL-2.0 | Copyleft faible (par fichier) | Les fichiers MPL modifies restent ouverts ; le reste du produit peut etre ferme | Oui | Composants integres dans des produits commerciaux (Firefox, Terraform avant 2023) |
+| LGPL-3.0 | Copyleft faible (bibliotheque) | La bibliotheque modifiee reste LGPL ; un programme qui la lie peut etre ferme | Oui | Bibliotheques a large diffusion (GTK, Qt) |
+| GPL-3.0 | Copyleft fort | Tout derive **distribue** est publie sous GPL avec ses sources | Oui | Applications et outils voulus libres de bout en bout (GIMP, Bash) |
+| AGPL-3.0 | Copyleft fort + reseau | Comme GPL, **et** les sources d'un service accessible par le reseau (SaaS) | Oui | Applications serveur / SaaS (Nextcloud, Mastodon) |
+| Unlicense | Domaine public | Aucune | Non | Snippets, exemples, contenus jetables |
+
+Compatibilites a rappeler : une dependance GPL/AGPL **distribuee** avec le projet impose une licence
+compatible (pas MIT/Apache pour l'ensemble) ; Apache-2.0 est compatible GPL-3.0 mais pas GPL-2.0. Sur un
+projet avec code, si une dependance directe connue est sous copyleft fort (manifeste, `LICENSE` du module),
+le signaler avant les questions.
+
+**2. Questions** — un seul appel AskUserQuestion, 4 questions :
+
+1. "Un tiers peut-il reutiliser ce code dans un logiciel ferme (proprietaire) ?"
+   - Oui, librement — adoption maximale, aucun retour des modifications exige → famille permissive
+   - Oui, mais ses modifications de MON code restent ouvertes — le reste de son produit peut etre ferme
+     → copyleft faible
+   - Non, tout derive doit rester open source — reciprocite garantie, mais freine l'usage en entreprise
+     → copyleft fort
+2. "Le projet sera-t-il surtout utilise comme service en ligne (SaaS, API hebergee) par des tiers ?"
+   - Non / produit distribue (binaire, paquet, firmware) — la GPL suffit a garantir la reciprocite
+   - Oui, et les modifications d'un service heberge doivent etre publiees — seule l'AGPL le couvre
+   - Oui, mais ce n'est pas un enjeu — pas de contrainte reseau
+3. "La protection contre les brevets est-elle importante ?"
+   - Oui — entreprise, contributeurs externes nombreux, domaine a brevets (crypto, codecs, medical)
+   - Non — projet personnel ou interne, risque faible
+4. "Quelle forme prend le livrable ?"
+   - Bibliotheque / SDK destine a etre integre — favorise MIT/Apache ou LGPL/MPL pour ne pas bloquer
+     l'integration
+   - Application / service autonome — toutes familles possibles
+   - Firmware / materiel embarque — attention : GPL-3.0 impose de permettre la reinstallation du logiciel
+     modifie sur l'appareil (« anti-tivoisation »)
+
+Pre-remplir chaque question depuis le contexte (cadrage, stack, Etape 8 : un projet deploye en SaaS rend la
+question 2 pertinente ; une bibliotheque npm oriente la question 4) en placant la reponse deduite en
+"(Recommande)".
+
+**3. Recommandation** — table de decision :
+
+| Q1 (reutilisation fermee) | Q2 / Q3 / Q4 | Recommandation | Alternatives |
+|---------------------------|--------------|----------------|--------------|
+| Oui, librement | Q3 = Oui | Apache-2.0 | MIT |
+| Oui, librement | Q3 = Non | MIT | Apache-2.0, BSD-3-Clause |
+| Modifications ouvertes | Q4 = Bibliotheque | LGPL-3.0 | MPL-2.0 |
+| Modifications ouvertes | sinon | MPL-2.0 | LGPL-3.0 |
+| Non (copyleft fort) | Q2 = Oui, publier | AGPL-3.0 | GPL-3.0 |
+| Non (copyleft fort) | sinon | GPL-3.0 | AGPL-3.0 si SaaS envisage |
+
+Correctifs : Q4 = Firmware + copyleft fort → mentionner GPL-2.0 comme alternative (sans clause
+anti-tivoisation) ; dependance copyleft fort signalee → ecarter toute recommandation incompatible.
+
+**Reponses contradictoires** — Q2 = « Oui, modifications a publier » avec Q1 ≠ copyleft fort : aucune licence
+courante n'a de clause reseau sans copyleft fort. Ne pas ignorer Q2 : la question de recommandation commence
+par expliquer la tension en une phrase (« tu acceptes l'integration dans un produit ferme, mais seule l'AGPL
+oblige un service heberge a publier ses modifications »), et propose la recommandation de la table (fidele a
+Q1, en precisant ce qu'elle ne couvre pas) et AGPL-3.0 (fidele a Q2, en precisant qu'elle interdit
+l'integration fermee).
+
+AskUserQuestion : "Licence recommandee : <SPDX> — <raison en une phrase tiree des reponses>. Laquelle retenir ?"
+- <SPDX recommande> (Recommande) — <consequence concrete pour un utilisateur du code>
+- <Alternative 1> — <ce qui change par rapport a la recommandation>
+- <Alternative 2> (si pertinente) — idem
+- Revoir les reponses — repose les 4 questions
+
+### Titulaire et enregistrement
+
+Licence retenue (hors « Decider plus tard ») → AskUserQuestion "Titulaire du copyright ?" :
+« <git config user.name> (Recommande) » / « <org GitHub> » (si le remote appartient a une organisation),
+saisie libre via « Autre ». Annee = annee courante.
+
+Identifiant enregistre : SPDX complet. Famille GNU (GPL, LGPL, AGPL) → variante `-or-later` par defaut
+(recommandation FSF : `AGPL-3.0-or-later`), `-only` seulement si l'utilisateur l'a demande.
+
+Enregistre dans `project-config.json` → `license` (section "Generation de la Configuration") ; le fichier
+`LICENSE` est cree a la Finalisation (section 5).
+
+---
+
 ## Etape 2 : Stack Backend
 
 ```
@@ -1374,7 +1523,7 @@ AskUserQuestion (texte libre via "Autre") :
   (planner, qa, deployer, dev-*...) ni `generic`
 - Role en une ligne
 - Specification : perimetre, entrees, livrables (formats/chemins), outils/charte, criteres de validation
-- Spawn : permanent (defaut — spawne au /start-session) | ponctuel (spawne a la demande)
+- Spawn : socle (defaut — spawne au /start-session) | milestone (si le planner l'inclut dans la team du milestone) | ponctuel (spawne a la demande)
 ```
 
 Puis « Ajouter une autre instance ? ». Les reponses alimentent `agents.generic[]` et la specification
@@ -1477,7 +1626,7 @@ Chaque environnement declare dans `infrastructure.environments[]` recoit un meca
   merge + tag officiel, declenche un rebuild deterministe via la CI choisie a l'Etape 7.
 
 Le mecanisme `deploy.mechanism` de chaque environnement reprend par defaut la reponse a la
-question 9 (docker-compose / helm / serverless / vps / paas / cloud-run) — proposer a
+question « Comment deploies-tu ? » (docker-compose / helm / serverless / vps / paas / cloud-run) — proposer a
 l'utilisateur de le personnaliser par environnement uniquement s'il le demande explicitement.
 
 > Seule la chaine QUALIF -> PROD est cablee dans l'orchestration CDP (voir
@@ -1551,7 +1700,8 @@ Jamais de passage silencieux : un environnement non valide ne doit apparaitre nu
 **4. Enregistrer** dans `project-config.json` (schema ci-dessous, section « 1. project-config.json »),
 sans secret : `infrastructure.environments[].access` — coordonnees non sensibles, **noms** des variables
 requises (`credentials_env`) et `verified` (date, statut, sondes jouees). Reporter ces memes noms dans
-`<env>.env.example` (section 3bis).
+`<env>.env.example` (section 3bis). Un acces par **fichier** (kubeconfig, token k8s, cle SSH, compte de service)
+se range dans `PRIVATE/` (Etape 10b) : la variable de `<env>.env` le designe par chemin (`KUBECONFIG=PRIVATE/k8s/...`).
 
 ---
 
@@ -1582,6 +1732,55 @@ AskUserQuestion (`multiSelect: true`) : "Quels aspects securite sont importants 
 
 ---
 
+## Etape 10b : Elements prives (`PRIVATE/`)
+
+Regle du template (section « Éléments privés » de `CLAUDE.md`) : tout element prive qui ne doit jamais etre
+commite vit dans `PRIVATE/` a la racine, gitignore. Cette etape **etudie** ce qui doit ou peut y aller.
+Hors perimetre (conventions propres, jamais deplacees) : `.env`, `.claude/agents/environments/<env>.env` et leurs
+`*.env.example`, `_work/`, `MARKETING/`, `build/`, `TEMPLATE_claude/`, `.claude/`.
+
+### Etude
+
+```bash
+EXCL='^(\.env(\.example)?$|\.claude/|_work/|MARKETING/|build/|TEMPLATE_claude/|PRIVATE/)'
+echo "## 1. Trackes, nom evocateur (deja commites → a sortir)"
+git ls-files | grep -vE "$EXCL" | grep -iE \
+  '(^|/)(secrets?|credentials?|private|perso(nal)?|tokens?)([._/-]|$)|[_.-](key|token|secret|password)s?$|\.(pem|key|p12|pfx|jks|keystore|kdbx|ovpn|mobileprovision)$|(^|/)id_(rsa|ecdsa|ed25519)$|kubeconfig|\.env\.[a-z]+$|\.(sql|dump)(\.gz)?$'
+echo "## 2. Trackes, contenu evocateur (fichiers seulement, jamais les valeurs)"
+git grep -lIE -e '-----BEGIN [A-Z ]*PRIVATE KEY-----' -e 'AKIA[0-9A-Z]{16}' -e 'gh[pousr]_[A-Za-z0-9]{36}' \
+  -e 'xox[abprs]-[A-Za-z0-9-]+' -e '(password|passwd|secret|api[_-]?key|token)["'"'"']?\s*[:=]\s*["'"'"'][^"'"'"' ]{8,}' \
+  -- . ':!*.env.example' ':!TEMPLATE_claude' ':!.claude' 2>/dev/null
+echo "## 3. Non trackes et non ignores (prive → PRIVATE/, sinon a commiter ou ignorer)"
+git ls-files --others --exclude-standard | grep -vE "$EXCL"
+```
+
+Puis **anticiper** ce qui y ira d'apres les reponses deja donnees (meme absent aujourd'hui) :
+
+| Reponse | Element prive attendu |
+|---------|-----------------------|
+| Etape 8b — acces par cle / fichier / token (SSH, kubeconfig, token k8s, compte de service cloud, registre) | fichier d'acces dans `PRIVATE/<type>/` ; la variable de `<env>.env` qui le designe (`KUBECONFIG`, `SSH_KEY_PATH`, `GOOGLE_APPLICATION_CREDENTIALS`...) pointe dans `PRIVATE/` — son **nom** reste dans `<env>.env.example`. Fichier volontairement partage hors repo (`~/.kube/config`) : proposer « Laisser » |
+| Etape 8b — comptes (identifiants de consoles, comptes de service, acces fournisseurs) | `PRIVATE/ACCES.md` (notes d'acces, jamais dans un fichier tracke) |
+| Etape 10 — donnees sensibles / paiements | exports et dumps de donnees reelles (jamais en fixtures de test) |
+| Etape 4 — mobile | keystore Android, profils et certificats de signature iOS |
+| Etape 5 — firmware | cles de provisioning / certificats d'appareil, secrets de flashage |
+| Brief / cadrage — client, contrat | documents client, contrats, specifications sous NDA |
+| Toujours | notes personnelles du developpeur, config locale propre au poste |
+
+Les candidats d'un **fixture de test manifestement factice** (ex. `password: "secret"` dans un test) sont
+listes comme tels et proposes « Laisser » par defaut.
+
+### Presentation et decision
+
+Tableau `Element | Etat (tracke / non tracke / attendu) | Raison | Action proposee`, puis AskUserQuestion
+(`multiSelect: true`) : "Quels elements ranger dans `PRIVATE/` ?" — une option par candidat (jusqu'a 4 par
+question, enchainer les questions sinon), la raison en description. Les elements attendus non retenus ne sont pas
+enregistres. Aucun candidat et rien d'attendu → l'indiquer en une ligne, `private.items: []`.
+
+Enregistre dans `project-config.json` → `private` (noms et chemins seulement, **jamais de contenu**) ; le
+deplacement est fait a la Finalisation (sous-section « Elements prives »), apres la fusion du `.gitignore`.
+
+---
+
 ## Generation de la Configuration
 
 ### 1. project-config.json
@@ -1593,6 +1792,14 @@ AskUserQuestion (`multiSelect: true`) : "Quels aspects securite sont importants 
   "org": "<GITHUB_ORG>",
   "project": "<REPO_NAME>",
   "description": "<DESCRIPTION>",
+  "license": { "spdx": "MIT", "holder": "<TITULAIRE>", "year": 2026, "source": "guided" },
+  "private": {
+    "reviewed": "2026-11-03",
+    "items": [
+      { "path": "PRIVATE/deploy_key", "kind": "cle d'acces PROD", "origin": "moved", "from": "deploy/deploy_key" },
+      { "path": "PRIVATE/dumps/", "kind": "dumps de donnees reelles", "origin": "expected" }
+    ]
+  },
   "version": "0.1.0",
   "initialized_at": "<TIMESTAMP>",
   "initialized_from": "analysis|manual|workshop|brief",
@@ -1662,11 +1869,14 @@ AskUserQuestion (`multiSelect: true`) : "Quels aspects securite sont importants 
   "marketing": {
     "site": "auto"
   },
+  "milestone": {
+    "defaults": { "patch": "leger", "minor": "complet", "major": "complet" }
+  },
   "agents": {
     "idle_ttl_minutes": 15,
     "idle_warning_interval_minutes": 5,
     "generic": [
-      { "name": "redacteur-pptx", "role": "Redaction de presentations PowerPoint", "spawn": "permanent" }
+      { "name": "redacteur-pptx", "role": "Redaction de presentations PowerPoint", "spawn": "socle" }
     ],
     "registry": []
   }
@@ -1703,18 +1913,21 @@ Valeurs a deriver si elles ne sont pas fournies explicitement :
 | `testing.regression_at_qa` | Defaut `gated` (`gated` \| `parallel` \| `none`) — `context/COMMON.md` 15.3 |
 | `testing.full_regression_at` | Defaut `qualif` (`qualif` \| `build` \| `prod`) — `context/COMMON.md` 15.4 |
 | `testing.coverage_min` | Defaut `70` (seuil minimal de couverture, en %) |
+| `milestone.defaults` | Intensite de depart d'un milestone selon son type de version (`patch` / `minor` / `major` → `leger` / `complet`). Defaut `patch: leger`, `minor` et `major: complet`. Le cadrage complet (options, team) est propose par le planner et valide au GATE 2 : `agents/context/MILESTONE_CADRAGE.md`. Absent = `complet` partout |
 | `testing.lot_max_tests` | Defaut `50` (nombre max de cas de test par lot ; QA execute et rapporte lot par lot) |
+| `private` | Etape 10b. `reviewed` : date de l'etude ; `items[]` : contenu attendu de `PRIVATE/` (gitignore) — `path`, `kind` (nature, sans valeur), `origin` : `moved` (deplace depuis `from`) \| `existing` (deja hors git, range) \| `expected` (a fournir par le developpeur). Copie trackee : un clone frais sait ce qui manque ; `qa` y lit ce qu'il copie dans ses worktrees |
+| `license` | Etape 1b. `spdx` : identifiant SPDX (`MIT`, `Apache-2.0`...), `LicenseRef-proprietary` (tous droits reserves), `LicenseRef-custom` (texte maison fourni) ou `null` (« Decider plus tard ») ; `holder` / `year` : titulaire et annee du copyright ; `source` : `detected` \| `provided` \| `guided` \| `proprietary` \| `deferred` |
 | `src_dir` | Detection Etape 0 (repertoire source principal) ou stack par defaut : `src`, `cmd`... |
 | `version_file` | Fichier source de verite de la version (ex: `package.json`, `config.json`, `VERSION`) |
-| `infrastructure.environments` | Defaut `[QUALIF, PROD]` (Etape 8, question 9bis) ; `publish.mode` = `promote` pour tous sauf le dernier (`rebuild-ci`) ; `deploy.mechanism` reprend la reponse a la question 9 pour chaque environnement, sauf personnalisation explicite |
+| `infrastructure.environments` | Defaut `[QUALIF, PROD]` (Etape 8, question « environnements de release ») ; `publish.mode` = `promote` pour tous sauf le dernier (`rebuild-ci`) ; `deploy.mechanism` reprend la reponse a la question « Comment deploies-tu ? » de l'Etape 8 pour chaque environnement, sauf personnalisation explicite |
 | `infrastructure.environments[].access` | Etape 8b : coordonnees non sensibles d'acces (`method`, `host`, `user`, `port`, `runtime`, `registry`/`context`...), **noms** des variables secretes (`credentials_env`) et resultat des sondes (`verified.status` : `ok` / `failed` / `skipped` / `unknown`). Jamais de valeur secrete. Lu par le preflight de `agents/deploy.md` et par les fichiers `deploy.<env>` (runtime, hote, port). `deploy.services` (optionnel) : seuls ces services/unites sont deployes |
 | Nom de fichier des environnements | `infrastructure.environments[].name` normalise : minuscules, espaces/underscores → tirets (ex. `PRE-PROD` → `pre-prod`) — utilise pour `.claude/agents/environments/{publish,deploy}.<nom>.template.md` (section 3bis) |
 
 ### 2. Agents dev-* et registre des agents
 
 Les agents de stack sont choisis avec la **table de correspondance stack → agent de stack** de la section
-"Registre des agents" (`dev-backend`, `dev-frontend`, `dev-firmware`, `dev-plugin` — une stack sans template
-est signalee `[?]`, aucun agent genere). Chacun est deploye en `.claude/agents/<name>.template.md`, avec un
+"Registre des agents" (`dev-backend`, `dev-frontend`, `dev-firmware`, `dev-plugin` ; une stack sans template
+dedie est couverte par `dev-generic`, compagnon obligatoire — Etape 5d). Chacun est deploye en `.claude/agents/<name>.template.md`, avec un
 compagnon `.md` optionnel pour les adaptations projet, et inscrit au registre ; les agents communs, deja
 deployes a l'etape 4 du fetch, y sont inscrits aussi :
 
@@ -1742,7 +1955,7 @@ done
 Remplir ensuite chaque compagnon cree avec les reponses de l'Etape 5d (`## Stack` et `## Toolchain et commandes`
 **non vides** pour `dev-generic`, `## Perimetre` pour une instance) — trackes git, jamais ecrases par la sync.
 Ajouter une ligne par agent de stack dans la table `## Agents Disponibles` de `CLAUDE.md` :
-`| <name> | <role> | .claude/agents/<name>.template.md | permanent |` (la ligne `dev-<categorie>` du template est
+`| <name> | <role> | .claude/agents/<name>.template.md | milestone |` (la ligne `dev-<categorie>` du template est
 retiree quand la categorie a des instances).
 
 En **reconfiguration** (stack modifiee), meme procedure : un agent de stack dont la `source` change (ex.
@@ -2115,6 +2328,77 @@ else
 fi
 ```
 
+#### Fichier de licence
+
+Selon `license` (Etape 1b) — **jamais d'ecrasement** d'un fichier `LICENSE*` / `COPYING*` existant :
+
+```bash
+SPDX=$(jq -r '.license.spdx // empty' .claude/project-config.json)
+HOLDER=$(jq -r '.license.holder // empty' .claude/project-config.json)
+YEAR=$(jq -r '.license.year // empty' .claude/project-config.json)
+if ls -d LICENSE* LICENCE* COPYING* 2>/dev/null | grep -q . || [ -z "$SPDX" ]; then
+  : # licence deja presente, ou « Decider plus tard » : rien a creer
+elif [ "$SPDX" = "LicenseRef-proprietary" ]; then
+  printf 'Copyright (c) %s %s. All rights reserved.\n\nThis software is proprietary. No license is granted to use, copy, modify\nor distribute it without prior written permission of the copyright holder.\n' \
+    "$YEAR" "$HOLDER" > LICENSE
+else
+  # Texte officiel via l'API GitHub (cle = SPDX en minuscules : mit, apache-2.0, gpl-3.0, agpl-3.0, mpl-2.0,
+  # lgpl-3.0, bsd-3-clause, unlicense ; suffixe -only/-or-later retire pour la cle)
+  KEY=$(echo "$SPDX" | tr 'A-Z' 'a-z' | sed -E 's/-(only|or-later)$//')
+  if BODY=$(gh api "licenses/$KEY" --jq .body 2>/dev/null) && [ -n "$BODY" ]; then
+    printf '%s\n' "$BODY" | sed -e "s/\[year\]/$YEAR/g" -e "s/\[fullname\]/$HOLDER/g" > LICENSE
+  else
+    echo "⚠ Texte de licence $SPDX non recupere (hors ligne ?) — LICENSE a ajouter a la main"
+  fi
+fi
+```
+
+Puis, pour chaque manifeste present (`package.json`, `Cargo.toml`, `pyproject.toml`) : champ licence absent →
+le renseigner avec l'identifiant SPDX (`"UNLICENSED"` dans `package.json` pour une licence proprietaire) ;
+present et different → le signaler dans le message de fin, sans le modifier.
+
+#### Elements prives (`PRIVATE/`)
+
+Selon `private` (Etape 10b), **apres** la fusion du `.gitignore` ci-dessus (`PRIVATE/` doit etre ignore avant
+tout deplacement) :
+
+```bash
+grep -qxF 'PRIVATE/' .gitignore 2>/dev/null || echo 'PRIVATE/' >> .gitignore   # garde-fou .gitignore personnalise
+mkdir -p PRIVATE
+git check-ignore -q PRIVATE/ || { echo "⚠ PRIVATE/ non ignore — deplacement annule"; exit 1; }
+jq -r '.private.items[]? | select(.origin=="moved") | "\(.from)\t\(.path)"' .claude/project-config.json |
+while IFS=$'\t' read -r from to; do
+  [ -e "$from" ] || continue
+  mkdir -p "$(dirname "$to")"
+  if git ls-files --error-unmatch "$from" >/dev/null 2>&1; then
+    git rm -r --cached -q "$from"          # retire de l'index ; le fichier reste sur disque
+  fi
+  mv "$from" "$to" && echo "  ✓ $from → $to"
+done
+```
+
+Puis :
+- **References** : `git grep -nF "<from>"` pour chaque element deplace — mettre a jour les chemins trackes
+  (config, scripts, `<env>.env` via la variable qui le designe) vers `PRIVATE/...` ; lister les modifications.
+- **Historique** : un element **tracke et deja pousse** reste lisible dans l'historique git. Le signaler au message
+  de fin (« rotation recommandee : <element> ») ; ne jamais reecrire l'historique automatiquement.
+- Le retrait de l'index (`git rm --cached`) est commite avec le reste de l'init (section 7, publication).
+
+Notice de copyright : seuls MIT, BSD et la licence proprietaire portent le titulaire dans `LICENSE`. Pour les
+autres (Apache-2.0, MPL-2.0, famille GNU, Unlicense), le texte officiel est verbatim et le titulaire n'y figure
+pas. Ajouter donc au `README.md` (le creer s'il est absent) une section `## Licence`, si aucune section
+licence n'existe deja :
+
+```markdown
+## Licence
+
+Copyright (C) <YEAR> <HOLDER>
+
+Distribue sous licence <SPDX> — voir [LICENSE](LICENSE).
+```
+
+(licence proprietaire : « Tous droits reserves — voir [LICENSE](LICENSE). » ; « Decider plus tard » : rien.)
+
 Puis appliquer la section **"Site marketing — worktree `gh-pages`"** (detection d'un `MARKETING/` deja suivi).
 
 #### Dossier des maquettes
@@ -2368,6 +2652,9 @@ non remplaces, les references vers un agent non genere et les incoherences entre
    diff de l'audit soit isole et facile a relire ou annuler :
 
    ```bash
+   # Depot sans aucun commit (git init frais, branche par defaut master...) : la premiere branche s'appelle main
+   git rev-parse -q --verify HEAD >/dev/null || git symbolic-ref HEAD refs/heads/main
+   INIT_FROM=$(git rev-parse -q --verify HEAD || echo "")   # point de depart : borne les commits de l'init (etape 7)
    git add -A && git commit -m "chore(claude): init-project" || true   # || true : rien a commiter = ok
    ```
 
@@ -2376,11 +2663,55 @@ non remplaces, les references vers un agent non genere et les incoherences entre
    passent par `AskUserQuestion`, comme d'habitude. Apres un init, `MEMORY.md` est vide : la migration
    MEMORY → docs (2.4) n'a rien a signaler.
 3. **Presenter le rapport "post-init" en tete du message de fin** : ecarts corriges en Auto, ecarts arbitres, ecarts
-   laisses en l'etat. Ne pas committer les corrections de l'audit : l'utilisateur relit `git diff` (le commit
-   d'init sert de point de retour).
+   laisses en l'etat. Les corrections sont commitees a part (etape 7) : `git show HEAD` les montre, le commit
+   d'init reste le point de retour.
 
 Si `/context-audit` est absent de `.claude/commands/` (deploiement incomplet), le signaler dans le rapport et
 continuer — ne jamais bloquer la fin de l'init.
+
+---
+
+### 7. Publication sur `main`
+
+Derniere action, **sans question** : l'init (ou la synchronisation, etape d7b) et l'audit sont termines, le resultat
+part sur `main` et sur GitHub. Section partagee par l'init et l'option d « Appliquer les mises a jour detectees » (`INIT_FROM` pose a
+l'etape 6.1 ou d7b).
+
+```bash
+git add -A && git commit -m "chore(claude): context-audit post-init" || true   # sync : "post-sync" ; rien = ok
+BR=$(git branch --show-current)
+
+if ! git remote get-url origin >/dev/null 2>&1; then
+  PUBLISH="local uniquement — pas de remote origin"
+elif [ "$BR" = main ]; then
+  # Rattraper main distant s'il a avance, puis pousser (jamais de --force)
+  git ls-remote --exit-code --heads origin main >/dev/null && git pull --rebase --autostash -q origin main
+  git push -u origin main && PUBLISH="pousse sur origin/main" || PUBLISH="ECHEC push main (voir erreur)"
+else
+  # Branche de travail (ex. milestone en cours) : NE PAS la merger dans main — elle porte du travail non livre,
+  # qui ne rejoint main qu'au deploiement PROD. Seuls les commits de l'init sont reportes sur main.
+  WT=.claude/worktrees/init-main
+  git fetch -q origin main && git worktree add -q --detach "$WT" origin/main
+  if git -C "$WT" cherry-pick ${INIT_FROM:+$INIT_FROM..}"$BR" && git -C "$WT" push origin HEAD:main; then
+    git fetch -q origin main:main 2>/dev/null   # main local a jour (fast-forward, main n'est pas checkout)
+    git push -q -u origin "$BR"                 # la branche de travail garde aussi ces commits
+    PUBLISH="commits d'init reportes sur origin/main (cherry-pick) ; $BR pousse"
+  else
+    git -C "$WT" cherry-pick --abort 2>/dev/null
+    PUBLISH="ECHEC report sur main (conflit ou push refuse) — commits d'init restes sur $BR"
+  fi
+  git worktree remove --force "$WT" 2>/dev/null
+fi
+echo "$PUBLISH"
+```
+
+Regles :
+- **Jamais de `--force`**, jamais de merge de la branche de travail dans `main` : seuls les commits produits par
+  l'init/la sync (`INIT_FROM..HEAD`) y vont. Le merge milestone → `main` reste celui du deploiement PROD.
+- Echec (push refuse par une protection de branche, conflit de rebase/cherry-pick) : ne rien forcer, reporter
+  `PUBLISH` et l'erreur dans le message de fin ; l'utilisateur publie a la main (ex. via une PR).
+- Exception documentee a la regle « seul `deployer` merge vers `main` » (`commands/context/COMMON.md` §6.3) :
+  l'init s'execute hors cycle milestone, avant toute team.
 
 ---
 
@@ -2395,6 +2726,10 @@ Configuration :
 - Database     : <DATABASE>
 - CI/CD        : <CICD>
 - Environnements : <ENVIRONMENTS>  (ex: QUALIF -> PROD)
+- Licence      : <SPDX> (<TITULAIRE>, <ANNEE>) — LICENSE <cree | deja present>
+                 | non definie — a choisir avant toute publication (relancer /init-project, option d)
+- Prive        : PRIVATE/ (gitignore) — N deplaces, N attendus a fournir : <chemins>
+                 rotation recommandee (deja pousse) : <elements | aucun>
 
 Memoire projet : .claude/memory/MEMORY.md initialisee (si absente)
 Teamleader : <modele> / <effort> ecrits dans .claude/settings.json (surcharge : compagnon .claude/agents/teamleader.md)
@@ -2402,8 +2737,9 @@ Modeles/efforts : <defauts adaptes | N alertes — N surcharges appliquees, N co
 Cadrage : docs/CADRAGE.md — <workshop|brief : N elements deduits, N precises>   (si workshop ou brief)
 Agents generiques : <NOM> (.claude/agents/generic.<NOM>.md), ...   (si declares)
 
-Audit contexte (/context-audit) : N ecarts corriges (Auto), N arbitres, N laisses — voir `git diff`
-  (commit d'init = point de retour)
+Audit contexte (/context-audit) : N ecarts corriges (Auto), N arbitres, N laisses — commit
+  "chore(claude): context-audit post-init" (`git show HEAD` ; commit d'init = point de retour)
+Publication : <PUBLISH>   (etape 7 — ex. "pousse sur origin/main")
 
 Milestone v0.1.0 : N issues de base — https://github.com/<org>/<repo>/milestone/<numero>
   (nouveau projet avec remote GitHub ; sinon "non cree — <raison>")
@@ -2411,7 +2747,7 @@ Milestone v0.1.0 : N issues de base — https://github.com/<org>/<repo>/mileston
 Agents generes (registre : project-config.json → agents.registry[], <tag>) :
 - .claude/agents/dev-backend.template.md   ← templates/dev-backend-<stack>.md
 - .claude/agents/dev-frontend.template.md  ← templates/dev-frontend-<stack>.md
-- [?] dev-<categorie> — <techno> : aucun template de stack   (si stack « Autre »)
+- .claude/agents/dev-<categorie>.template.md ← templates/dev-generic.md  (si stack « Autre » — compagnon .md obligatoire)
 
 Commandes disponibles :
 - /feature, /bugfix, /hotfix, /refactor
@@ -2493,6 +2829,13 @@ jamais de milestone `v0.1.0` cree ici)
 
 #### Etape d0 — Registre des agents
 
+> **Migration v3 → v4 (cadrage par milestone)** — a l'entree de l'option d, avant d2 : si `milestone.defaults` est absent
+> de `project-config.json`, l'ajouter avec les valeurs par defaut (`patch: leger`, `minor`/`major: complet`) et
+> le signaler dans le rapport d8. Les colonnes `Spawn` `permanent` de la table « Agents Disponibles » sont
+> reecrites par d3b/d5d selon le template (`socle` / `milestone` / `ponctuel`) ; une instance generique garde son
+> `agents.generic[].spawn` (`permanent` = `socle`). Un milestone deja en cours garde son deroulement : sans `cadrage`
+> dans `workflow-state.json`, il est mene en `complet` (`agents/context/MILESTONE_CADRAGE.md` section 6).
+
 Si `agents.registry` est absent de `project-config.json` → section "Registre des agents", "Migration —
 projet anterieur au registre", avant toute autre etape. Le registre est ensuite la reference des etapes
 d2, d3, d3b et d5 pour les agents.
@@ -2559,7 +2902,7 @@ Si `CUSTOMIZED_COMMANDS[]` non vide → informer l'utilisateur avant de continue
 Pour rétablir le template, supprimer le fichier .claude/commands/[nom].md et relancer l'option d.
 ```
 
-#### Etape d1c — Migration : renommer les contextes legacy `context/X.md` → `context/X.template.md`
+#### Etape d1b2 — Migration : renommer les contextes legacy `context/X.md` → `context/X.template.md`
 
 Même migration que l'étape M1c (v1/v2 → v3), applicable ici à un projet déjà en v3 mais synchronisé
 avant l'introduction du pattern template/compagnon pour `context/`. Sans effet si déjà migré.
@@ -2684,6 +3027,47 @@ valide (<statut>)`), puis a l'etape d5 AskUserQuestion : Collecter et valider ma
 rejouer l'Etape 8b pour ces seuls environnements, avec le role `infra`) / Plus tard (l'ecart reste affiche
 a chaque sync et `/deploy <env>` refusera de partir tant que l'acces n'est pas valide).
 
+#### Etape d1g — Licence
+
+Un projet initialise avant l'Etape 1b n'a pas de cle `license` dans `project-config.json`. Lecture seule ici :
+
+- Cle `license` presente (y compris `source: deferred`) → rien ; `deferred` est seulement rappele au rapport d8.
+- Cle absente, licence detectee (detection de l'Etape 1b : fichier ou manifeste) → au rapport d4
+  `[+] licence — <SPDX> detectee (<fichier>), a enregistrer` ; a l'etape d5, l'ecrire sans question
+  (`source: detected`, titulaire lu dans la ligne de copyright).
+- Cle absente, aucune licence → au rapport d4 `[?] licence — non definie` ; a l'etape d5 AskUserQuestion :
+  Definir maintenant (Recommande — rejouer l'Etape 1b puis « Fichier de licence » de la Finalisation) /
+  Plus tard (`license: { "spdx": null, "source": "deferred" }`, plus reposee, rappelee au rapport d8).
+
+#### Etape d1h — Elements prives (`PRIVATE/`)
+
+Un projet initialise avant l'Etape 10b n'a ni cle `private` dans `project-config.json` ni section « Éléments
+privés » dans `CLAUDE.md` (hors bloc `TEAMLEADER_PROTOCOL`, donc non resynchronisee par d6). Lecture seule ici :
+
+- Cle `private` absente → jouer l'**Etude** de l'Etape 10b ; au rapport d4 `[+] PRIVATE/ — N candidats
+  (N trackes, N non trackes, N attendus)` (ou `[+] PRIVATE/ — aucun candidat, a creer`) ; a l'etape d5,
+  « Presentation et decision » de l'Etape 10b puis « Elements prives » de la Finalisation.
+- Cle `private` presente → rejouer seulement les recherches 1-2 de l'Etude (trackes) : un nouveau candidat →
+  `[!] PRIVATE/ — <fichier> tracke hors PRIVATE/` au rapport d4, decision a l'etape d5 comme ci-dessus.
+- `CLAUDE.md` sans `## Éléments privés` → a l'etape d5, inserer la section depuis `TEMPLATE_claude/CLAUDE_TEMPLATE.md`
+  juste avant `## Conventions Git` (ou en fin de fichier), sans toucher au reste :
+
+```bash
+grep -q '^## Éléments privés' CLAUDE.md || {
+  mkdir -p _work/tmp
+  awk '/^## Éléments privés/{p=1} p&&/^## Conventions Git/{exit} p' TEMPLATE_claude/CLAUDE_TEMPLATE.md > _work/tmp/private-section.md
+  if grep -q '^## Conventions Git' CLAUDE.md; then
+    awk 'FNR==NR{s=s $0 "\n"; next} /^## Conventions Git/{printf "%s", s} {print}' _work/tmp/private-section.md CLAUDE.md > CLAUDE.md.tmp
+  else
+    { cat CLAUDE.md; echo; cat _work/tmp/private-section.md; } > CLAUDE.md.tmp
+  fi
+  mv CLAUDE.md.tmp CLAUDE.md && rm -f _work/tmp/private-section.md && echo "✓ CLAUDE.md — section Éléments privés ajoutée"
+}
+```
+
+La ligne `PRIVATE/` du `.gitignore` est ajoutee par la fusion de l'etape d6b — la faire **avant** tout deplacement
+(le garde-fou de la Finalisation l'ajoute de toute facon).
+
 #### Etape d2 — Calculer les noms deployes attendus
 
 ```bash
@@ -2771,7 +3155,7 @@ while read -r n; do [[ -n "$n" ]] && EXPECTED_TEAMMATES+=("$n"); done < <(jq -r 
 while read -r n; do [[ -n "$n" ]] && EXPECTED_TEAMMATES+=("$n"); done < <(jq -r '.agents.generic[]?.name' .claude/project-config.json)
 ```
 
-Ligne attendue d'un agent de stack (registre) : `| <name> | <role> | .claude/agents/<name>.template.md | permanent |`,
+Ligne attendue d'un agent de stack (registre) : `| <name> | <role> | .claude/agents/<name>.template.md | milestone |`,
 `<role>` = `agents.registry[].role` (a defaut, le role de la ligne `dev-<categorie>` du template) — une ligne par
 instance.
 
@@ -3248,10 +3632,14 @@ gh label create "DONE"      --color "0e8a16" --description "Issue livrée et val
 
 #### Etape d7b — Audit du contexte (`/context-audit`)
 
-Meme etape que « 6. Audit du contexte » de l'init : commiter l'etat synchronise (point de retour), puis lancer
+Meme etape que « 6. Audit du contexte » de l'init : commiter l'etat synchronise (point de retour, message
+`chore(claude): sync template <tag>`, `INIT_FROM` pose juste avant comme a l'etape 6.1), puis lancer
 `/context-audit` en audit complet. Les verifications d1e / d5e (graphe, doublons) restent la verification
 specifique a la synchronisation ; `/context-audit` y ajoute les incoherences et references cassees transverses
 (commandes, agents, contextes). Reporter le resultat dans le rapport d8.
+
+Puis appliquer **« 7. Publication sur `main` »** (commit des corrections `chore(claude): context-audit post-sync`,
+report sur `main`, push) et reporter `PUBLISH` dans le rapport d8.
 
 #### Etape d8 — Rapport final
 
@@ -3271,8 +3659,11 @@ Synchronisation terminee.
   CLAUDE.md table Agents Disponibles : mis à jour (N lignes — documentation uniquement)
   Labels GitHub                     : vérifiés (PLANNING, PRET, EN COURS, EN REVIEW, EN QA, DONE)
   Audit contexte (/context-audit)   : N corriges (Auto), N arbitres, N laisses (etape d7b)
+  Publication                       : <PUBLISH> (section 7 — ex. "pousse sur origin/main")
   Schema infrastructure             : [convertit vers environments[] | deja a jour | inchange (refuse)]
   Acces aux environnements          : [<ENV>: ok | <ENV>: non valide (statut) | valides a l'instant (etape d1f)]
+  Licence                           : [<SPDX> (inchangee | enregistree | definie a l'instant) | non definie — reportee] (etape d1g)
+  Elements prives (PRIVATE/)        : [N deplaces, N attendus | inchange] — rotation recommandee : <elements> (etape d1h)
 
   Fichiers PROJET preserves (non touches) :
     ✓ CLAUDE.md (hors bloc TEAMLEADER_PROTOCOL et hors table Agents Disponibles)
@@ -3283,11 +3674,13 @@ Synchronisation terminee.
                                   elles, resynchronisées via le registre comme les autres agents)
 
   Teammates (registre des agents — sortie de registry_report) :
-  | Teammate     | Fichier                  | Source                          | Version | Etat                        | Compagnon   |
-  |--------------|--------------------------|---------------------------------|---------|-----------------------------|-------------|
-  | planner      | implementation-planner.… | agents/implementation-planner.md| v3.20.0 | 🟢 a jour                   | —           |
-  | dev-firmware | dev-firmware.template.md | templates/dev-firmware-esp32.md | v3.22.0 | 🟢 a jour                   | ✓ dev-firmware.md |
-  | qa           | qa.template.md           | agents/qa.md                    | v3.18.0 | 📌 epingle (v3.22.0 dispo)  | ✓ qa.md     |
+  | Teammate     | Fichier                  | Source                          | Version | Etat                        | Compagnon   | Spawn                      |
+  |--------------|--------------------------|---------------------------------|---------|-----------------------------|-------------|----------------------------|
+  | team-lead    | teamleader.template.md   | agents/teamleader.md            | v3.22.0 | 🟢 a jour                   | —           | — (Claude principal, jamais spawne) |
+  | planner      | implementation-planner.… | agents/implementation-planner.md| v3.20.0 | 🟢 a jour                   | —           | au /start-session          |
+  | dev-firmware | dev-firmware.template.md | templates/dev-firmware-esp32.md | v3.22.0 | 🟢 a jour                   | ✓ dev-firmware.md | au /start-session    |
+  | qa           | qa.template.md           | agents/qa.md                    | v3.18.0 | 📌 epingle (v3.22.0 dispo)  | ✓ qa.md     | au /start-session          |
+  | security     | security.template.md     | agents/security.md              | v3.22.0 | 🟢 a jour                   | —           | a la demande du teamleader |
   | ...
 ```
 
