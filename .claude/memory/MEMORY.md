@@ -3,7 +3,7 @@
 ## Etat courant
 - Version : PROD `v1.4.0` livree le 2026-10-27 sur `emby` (tag `v1.4.0`, merge `530ddf3`, Release GitHub avec `EmbyBadges.dll` 691712 o ; `.prev` = v1.3.0, 672256 o). QUALIF `emby2` en 1.4.0.3 (meme contenu). csproj `<Version>` = `1.4.0` sur `main` (le prochain milestone repasse en `X.Y.Z.0` a l'ouverture de sa branche).
 - Milestone `v1.4.0 - Indicateurs de playlist` (n°2) CLOS — #5 (pictogramme de partage + coeur Favoris sur playlist) et #6 (badge « lus/total » du proprietaire, maj sur evenement ~30 s) fermees. Aucune issue ni milestone ouverts. Branche `main` poussee ; `milestone/v1.4.0` supprimee (local + remote) ; `gh-pages` conservee.
-- Template Claude `v3.29.2` (`a4276ee`, synchronise le 2026-10-31, commit `8514793` pousse ; v3.29.2 = etape BRANCHES dans `/end-session` + lecture seule dans `/start-session` ; agents ET contextes au registre de `project-config.json`). Agent `deploy` laisse en sonnet/medium malgre l'alerte d'adequation (choix utilisateur). Acces QUALIF/PROD verifies et enregistres (`infrastructure.environments[].access`, statut `ok`).
+- Template Claude `v4.2.0` (`b6626d6`, synchronise le 2026-11-03 : cadrage par milestone — agents `socle`/`milestone`/`ponctuel`, `milestone.defaults` ; licence GPL-3.0-or-later ; `private/` renomme `PRIVATE/`). Agent `deploy` laisse en sonnet/medium malgre l'alerte d'adequation (choix utilisateur). Acces QUALIF/PROD verifies et enregistres (`infrastructure.environments[].access`, statut `ok`).
 - Tests : `tests/EmbyBadges.Tests/` xUnit 131 tests (Synchro + PlaylistShare + PlaylistProgress). Procedures manuelles `tests/procedures/badges/{synchro,playlist}/`.
 - Site marketing a jour v1.4.0 (+ rattrapage v1.3.0), gh-pages `6b322c0`. Release notes datees (v1.3.0 2026-10-22, v1.4.0 2026-10-27).
 
@@ -12,14 +12,14 @@
 - Planner sur `opus/high` via le compagnon `.claude/agents/implementation-planner.md` (quota Fable epuise le 2026-10-27).
 - `IItemRepository` injecte directement dans `BadgeEnhancer` ; `PlaylistEventsEntryPoint` (`IServerEntryPoint`) demarre bien en QUALIF et PROD.
 - BUILD/PUBLISH/DEPLOY : `.claude/agents/deploy.md` + `environments/{publish,deploy}.{qualif,prod}.md`. Rollback = restaurer `EmbyBadges.dll.prev`. Bump csproj avant tag : CLAUDE.md § Release.
-- Pas de CHANGELOG.md (decision maintenue) ; release notes par version dans `docs/releases/vX.Y.Z/`.
-- Agents : 9 dans la table CLAUDE.md ; `infra` et `marketing-release` ponctuels.
+- Pas de CHANGELOG.md : voir compagnon `.claude/agents/doc-updater.md`.
+- Agents : 10 dans la table CLAUDE.md ; socle = `planner`, `deployer` ; `security`, `infra`, `marketing` ponctuels ; les autres `milestone`.
 - Marketing : ton fun, site FR/EN sur gh-pages (worktree `MARKETING/`). Regles Chrome/Emby : CLAUDE.md « Emby web UI (Chrome) ».
 
 ## Pratiques / pieges
 - Teammates : pas d'outil TeamCreate (adressage `team-lead` : voir TEAMMATES_PROTOCOL). Respawn d'un teammate tombe : le nouveau recoit un suffixe (`planner-2`) tant que l'ancien nom est pris.
 - Les commits des teammates portent le trailer de leur propre modele (Haiku/Sonnet) : normal, ne pas corriger.
-- Teamleader : apres DEPLOY PROD, repasser soi-meme sur `main` (`checkout main` + `pull`) et supprimer la branche milestone, meme sans `BRANCH REQUEST` du deployer ; inclure l'Etape 6 (nettoyage des branches) dans l'ordre PROD. Ne pas oublier en Phase 6 : validation `infra` et dispatch `marketing`.
+- Fin de Phase 6 (retour sur `main`, branche milestone, infra, marketing) : compagnon `.claude/agents/teamleader.md`.
 - kubeconfig Rancher (`PRIVATE/kubeconfig.yml`) expire : 403 `system:unauthenticated` → l'utilisateur le regenere depuis Rancher.
 - Cache images Emby en `.webp` : purger `.jpg` ET `.webp` (CLAUDE.md « Image Cache »). Une playlist sans image n'appelle jamais l'enhancer.
 - Boot de `emby`/`emby2` : exceptions IsoMounter/VirtualLib/AudioBookFolderNfoProvider sans lien avec EmbyBadges. Le journal courant n'est pas toujours `embyserver.txt` (chercher « Loading EmbyBadges »).
