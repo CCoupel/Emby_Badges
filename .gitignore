@@ -5,6 +5,7 @@ private/
 *.yml
 *.yaml
 !.github/**/*.yml
+!.claude-launcher/*.yaml
 
 # Build outputs
 bin/

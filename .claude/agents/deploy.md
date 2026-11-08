@@ -7,7 +7,7 @@
 ## Contexte projet
 
 - Artefact unique : `EmbyBadges.dll` (plugin Emby, `net6.0`). Pas de Docker, pas de tarball.
-- Outillage (hors PATH, shell de reference WSL) : `DOTNET="/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe"`, `python3`.
+- Outillage : `DOTNET` resolu par `commands.env` (`project-config.json`) — `dotnet` du PATH (conteneur Claude-Launcher, SDK .NET 6 sous `~/.local/dotnet`), sinon `dotnet.exe` Windows sous WSL ; `python3`.
 - Tests automatises : projet xUnit `tests/EmbyBadges.Tests/`, lance par `commands.test` (`project-config.json`)
   = `dotnet test tests/EmbyBadges.Tests/`. La validation fonctionnelle se fait en QUALIF (instance `emby2`) par l'utilisateur.
 - Version : `<Version>` de `src/EmbyBadges/EmbyBadges.csproj` (`version_file` du project-config). Format historique
@@ -23,7 +23,7 @@ Les etapes 1-2 (verification `git status` propre, bump `a+1`, commit `chore(vers
 du template, sans `npm test`. L'etape 3 devient :
 
 ```bash
-DOTNET="/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe"
+eval "$(python3 -c 'import json;print(json.load(open(".claude/project-config.json"))["commands"].get("env",""))')"   # DOTNET (commands.env)
 REPO_ROOT=$(git rev-parse --show-toplevel)
 BUILD_DIR="$REPO_ROOT/build/candidate_v$DIR_VERSION"
 mkdir -p "$BUILD_DIR"
@@ -36,7 +36,7 @@ python3 gen_config_page.py
 "$DOTNET" build src/EmbyBadges/EmbyBadges.csproj --configuration Release \
   -p:Version=$VERSION --output "$BUILD_DIR/tmp"
 # Verifier "0 Erreur(s)" — sinon BUILD FAILED (Probleme : compilation)
-# Sous WSL, dotnet.exe est un binaire Windows : --output doit recevoir un chemin Windows
+# Seulement si DOTNET est le dotnet.exe Windows (WSL) : binaire Windows : --output doit recevoir un chemin Windows
 # (--output "$(wslpath -w "$BUILD_DIR/tmp")"), sinon la DLL n'est pas ecrite a l'endroit attendu.
 # Verifier la presence de $BUILD_DIR/tmp/EmbyBadges.dll avant la copie.
 

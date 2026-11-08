@@ -1,0 +1,17 @@
+# Généré par le template (/init-project) — NE PAS MODIFIER : réécrit à chaque passage.
+# Ajouts propres au projet : .claude-launcher/env.yaml (fusionné par Claude-Launcher ≥ v5.5.0).
+image: docker.io/library/debian:12
+packages: [jq, python3]
+packages_by_manager:
+  apt: [gh, libicu-dev]
+  dnf: [gh, libicu]
+  apk: [github-cli, icu-libs, krb5-libs, libgcc, libstdc++]
+setup:
+  - git config --global --get-all include.path | grep -qxF "$PWD/PRIVATE/gitconfig" || git config --global --add include.path "$PWD/PRIVATE/gitconfig"
+  - |
+    ~/.local/dotnet/dotnet --list-sdks 2>/dev/null | grep -q '^6\.0\.' || { curl -fsSL https://dot.net/v1/dotnet-install.sh | bash -s -- --channel 6.0 --install-dir ~/.local/dotnet; }
+    ln -sf ~/.local/dotnet/dotnet ~/.local/bin/dotnet
+  - dotnet restore src/EmbyBadges/EmbyBadges.csproj
+  - dotnet restore tests/EmbyBadges.Tests/EmbyBadges.Tests.csproj
+watch: [src/EmbyBadges/EmbyBadges.csproj, tests/EmbyBadges.Tests/EmbyBadges.Tests.csproj]
+local: [src/EmbyBadges/bin, src/EmbyBadges/obj, tests/EmbyBadges.Tests/bin, tests/EmbyBadges.Tests/obj]
