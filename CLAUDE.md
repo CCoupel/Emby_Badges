@@ -28,13 +28,13 @@ Each badge group (Resolution, Language, MultiVersion, Favorites, Rating, Synchro
 ## Build
 
 ```bash
-"/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe" build \
+"$DOTNET" build \
   src/EmbyBadges/EmbyBadges.csproj \
   --configuration Release \
   --output dist/
 ```
 
-Reference shell is WSL (`python3`, `/mnt/c/...` paths), as in `commands.*` of `.claude/project-config.json`. On Git Bash/Windows use `python` and `C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe` instead.
+`DOTNET` is resolved by `commands.env` of `.claude/project-config.json` (evaluate it first, as `commands.*` do): the native `dotnet` from `PATH` (Claude-Launcher container: .NET 6 SDK under `~/.local/dotnet`, from `.claude-launcher/env-template.yaml`), otherwise the user-level Windows `dotnet.exe` under WSL (`/mnt/c/...`). On Git Bash/Windows use `python` and `C:/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe`.
 
 **CI script:** `bash scripts/ci.sh` (`commands.ci`) runs `gen_config_page.py` + Release build and checks `dist/EmbyBadges.dll`; it auto-detects the user-level `dotnet` (override with `DOTNET=`). `.github/workflows/ci-branch.yml` runs it on `milestone/**` pushes and `workflow_dispatch` (pre-validation, read-only, no publish) — it is the barrier checked before `/publish prod`. `release.yml` still has its own steps (deferred gap: not yet reduced to `run: bash scripts/ci.sh`).
 
@@ -55,7 +55,7 @@ Must be run before building when the config page changes.
 Unit tests (xUnit) live in `tests/EmbyBadges.Tests/` (pure logic: `SyncDetector.EvaluateTags`, `SyncDetector.IsShared`, `BadgeRenderer.LettersOf`/`ColorOf`, cache key; since v1.4.0 `PlaylistShareTests` — `OwnerOf`, `IndexNeeded`, `ShareColorOf` — and `PlaylistProgressTests` — `CountProgress`, `ProgressLabel`, `IsStale`, `ShouldInvalidateOnUserData`). Manual QUALIF procedures: `tests/procedures/` (index `tests/INDEX.md`). They reach internals via `InternalsVisibleTo`.
 
 ```bash
-/mnt/c/Users/cyril/AppData/Local/Microsoft/dotnet/dotnet.exe test tests/EmbyBadges.Tests/
+"$DOTNET" test tests/EmbyBadges.Tests/
 ```
 
 Config key: `commands.test` in `.claude/project-config.json`.
