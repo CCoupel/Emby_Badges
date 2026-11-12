@@ -20,7 +20,7 @@
 - Teammates : pas d'outil TeamCreate (adressage `team-lead` : voir TEAMMATES_PROTOCOL). Respawn d'un teammate tombe : le nouveau recoit un suffixe (`planner-2`) tant que l'ancien nom est pris.
 - Les commits des teammates portent le trailer de leur propre modele (Haiku/Sonnet) : normal, ne pas corriger.
 - Fin de Phase 6 (retour sur `main`, branche milestone, infra, marketing) : compagnon `.claude/agents/teamleader.md`.
-- kubeconfig Rancher (`PRIVATE/kubeconfig.yml`) expire : 403 `system:unauthenticated` → l'utilisateur le regenere depuis Rancher.
+- kubeconfig Rancher (`PRIVATE/GLOBAL/kubeconfig.yml`) expire : 403 `system:unauthenticated` → l'utilisateur le regenere depuis Rancher.
 - Cache images Emby en `.webp` : purger `.jpg` ET `.webp` (CLAUDE.md « Image Cache »). Une playlist sans image n'appelle jamais l'enhancer.
 - Boot de `emby`/`emby2` : exceptions IsoMounter/VirtualLib/AudioBookFolderNfoProvider sans lien avec EmbyBadges. Le journal courant n'est pas toujours `embyserver.txt` (chercher « Loading EmbyBadges »).
 - Debug serveur actif sur `emby2` depuis le 2026-10-27 (inactif sur `emby`).

@@ -13,7 +13,7 @@ Sinon : STOP, remonter a `main` sans rien executer. Ne jamais l'enchainer automa
 
 ```bash
 # 1. Verification + recuperation de l'artefact publie (Release GitHub du tag)
-export KUBECONFIG="${KUBECONFIG:-PRIVATE/kubeconfig.yml}"
+export KUBECONFIG="${KUBECONFIG:-PRIVATE/GLOBAL/kubeconfig.yml}"
 [ -n "$KUBE_CONTEXT" ] && kubectl config use-context "$KUBE_CONTEXT"
 mkdir -p build/prod_v$VERSION
 gh release download "v$VERSION" -R CCoupel/Emby_Badges -p EmbyBadges.dll -D "build/prod_v$VERSION" --clobber
@@ -36,7 +36,7 @@ ACTUAL_SIZE=$(MSYS_NO_PATHCONV=1 kubectl exec -n media "$NEW_POD" -- stat -c %s 
 [ "$ACTUAL_SIZE" = "$EXPECTED_SIZE" ] || ROLLOUT_STATUS=1
 ```
 
-Variables : `KUBECONFIG` (defaut `PRIVATE/kubeconfig.yml`), `KUBE_CONTEXT` optionnel. `gh` authentifie.
+Variables : `KUBECONFIG` (defaut `PRIVATE/GLOBAL/kubeconfig.yml`), `KUBE_CONTEXT` optionnel. `gh` authentifie.
 
 Cache d'images : meme purge optionnelle que QUALIF, sur `deployment/emby` — a proposer a l'utilisateur, jamais automatique en PROD.
 

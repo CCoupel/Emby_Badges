@@ -8,7 +8,7 @@
 ## Prérequis
 
 - [ ] Environnement : QUALIF (`emby2`, namespace `media`), DLL candidate 1.3.0 déployée via `/deploy qualif`
-- [ ] `export KUBECONFIG=PRIVATE/kubeconfig.yml`
+- [ ] `export KUBECONFIG=PRIVATE/GLOBAL/kubeconfig.yml`
 - [ ] Plugin PlaySync installé sur QUALIF (sauf CA10b, où il est volontairement absent/désactivé)
 - [ ] 2 utilisateurs Emby : `U1` (propriétaire, premier utilisateur) et `U2` (membre)
 - [ ] Films de test : `F1`..`F4` ; une série `S1` dont l'épisode `E1` sert au CA5

@@ -6,7 +6,7 @@
 
 ## Regles critiques (issues de l'ancien /build)
 
-1. **Kubeconfig** : `export KUBECONFIG=PRIVATE/kubeconfig.yml` en premier (fichier gitignore). Sans lui kubectl ne trouve pas le cluster.
+1. **Kubeconfig** : `export KUBECONFIG=PRIVATE/GLOBAL/kubeconfig.yml` en premier (fichier gitignore). Sans lui kubectl ne trouve pas le cluster.
 2. **Destination** : `/config/plugins/EmbyBadges.dll` — racine du dossier plugins, **pas** un sous-dossier (comme `VirtualLib.dll`, `Iconic.dll`...). Le nom dans le pod est `EmbyBadges.dll` (sans version).
 3. **`MSYS_NO_PATHCONV=1`** obligatoire (Git Bash/Windows) pour tout argument kubectl contenant un chemin Linux absolu.
 4. **Source relative** : chemin du DLL relatif a la racine du repo (`build/qualif_v.../...`), jamais un chemin Windows absolu (casse `kubectl cp`).
@@ -17,12 +17,12 @@
 
 | Variable | Usage |
 |----------|-------|
-| `KUBECONFIG` | `PRIVATE/kubeconfig.yml` (defaut si absent) |
+| `KUBECONFIG` | `PRIVATE/GLOBAL/kubeconfig.yml` (defaut si absent) |
 | `KUBE_CONTEXT` | optionnel — contexte a selectionner si le kubeconfig en contient plusieurs |
 
 ```bash
 # 1. Verification — la publication QUALIF doit exister
-export KUBECONFIG="${KUBECONFIG:-PRIVATE/kubeconfig.yml}"
+export KUBECONFIG="${KUBECONFIG:-PRIVATE/GLOBAL/kubeconfig.yml}"
 [ -n "$KUBE_CONTEXT" ] && kubectl config use-context "$KUBE_CONTEXT"
 ARTIFACT="build/qualif_v$DIR_VERSION/EmbyBadges-$VERSION.dll"
 test -f "$ARTIFACT" || { echo "Publication QUALIF absente pour $VERSION — /publish qualif d'abord"; exit 1; }

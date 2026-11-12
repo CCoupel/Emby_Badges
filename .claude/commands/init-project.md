@@ -51,6 +51,7 @@ jamais du texte brut listant des lettres dans le chat :
     |
     v
 [CONFIGURATION] --> Questions ou deduction
+    |                  (dont ouverture Chrome : CL_BROWSER_PATH_MAP du launcher, sinon repli, Etape 9d)
     |
     v
 [GENERATION] --> project-config.json + agents dev-* + registre des agents
@@ -1711,7 +1712,7 @@ Jamais de passage silencieux : un environnement non valide ne doit apparaitre nu
 sans secret : `infrastructure.environments[].access` — coordonnees non sensibles, **noms** des variables
 requises (`credentials_env`) et `verified` (date, statut, sondes jouees). Reporter ces memes noms dans
 `<env>.env.example` (section 3bis). Un acces par **fichier** (kubeconfig, token k8s, cle SSH, compte de service)
-se range dans `PRIVATE/` (Etape 10b) : la variable de `<env>.env` le designe par chemin (`KUBECONFIG=PRIVATE/k8s/...`).
+se range dans `PRIVATE/<ENV>/` (Etape 10b) : la variable de `<env>.env` le designe par chemin (`KUBECONFIG=PRIVATE/PROD/kubeconfig`).
 
 ---
 
@@ -1787,6 +1788,47 @@ avant cette etape.
 
 Ecriture a la Finalisation (section 5, « Environnement conteneur »).
 
+### Etape 9d : Ouverture des fichiers dans Chrome (correspondance de chemins)
+
+Le teamleader ouvre dans Chrome (MCP `claude-in-chrome`) les brouillons de maquette, les procedures de tests manuels
+et l'apercu marketing de repli, en `file://`. Claude et Chrome ne voient pas forcement le projet au meme chemin : la
+correspondance depend du poste et du backend, et c'est **Claude-Launcher ≥ v5.9.0 qui la fournit** (`CL_BROWSER_PATH_MAP`,
+reglage `browser_paths` de sa config). Regle, sources et conversion : `TEMPLATE_claude/commands/context/COMMON.md`
+14.9 (fonction `browser_url`).
+
+1. **`CL_BROWSER_PATH_MAP` fournie** (`launcher_browser_map` repond : environnement tmux de la session, sinon du
+   processus — launcher a jour) → **aucune question**. Afficher la correspondance effective pour
+   ce projet (prefixe `container` retenu ↔ `host`, `os`) puis jouer la verification (point 3). `[]` → « aucun
+   navigateur declare par le launcher : les fichiers seront affiches par leur chemin », sans verification. Echec de
+   la verification → la correction se fait dans `browser_paths` du launcher (le dire, avec l'URL essayee), jamais
+   dans `project-config.json`. Un `browser.path_map` deja present est conserve tel quel (repli sans launcher).
+2. **Variable absente** (`launcher_browser_map` en echec : projet lance sans Claude-Launcher, ou launcher anterieur) →
+   **repli** `browser.path_map` :
+   - Detecter (lecture seule) : `PROJECT_ROOT=$(git rev-parse --show-toplevel)` ; WSL (`command -v wslpath`) →
+     racine Windows proposee `wslpath -w "$PROJECT_ROOT"` ; conteneur (`/.dockerenv`, `/run/.containerenv`,
+     `KUBERNETES_SERVICE_HOST`, `HOSTNAME` en `claude-launcher-*`) → racine du poste non detectable : le signaler
+     (« mettre a jour Claude-Launcher fournirait cette correspondance ») et la demander ; sinon → meme chemin, `linux`.
+     `browser.path_map` deja present → valeur par defaut.
+   - Question (le chemin du projet affiche dans la question) :
+     ```
+     AskUserQuestion : "Chrome doit ouvrir les fichiers du projet (<PROJECT_ROOT>) en file:// — à quel chemin le poste
+     qui exécute Chrome voit-il ce dossier ?"
+     - <valeur existante ou detectee> (Recommande) — ex. "Windows : C:\Users\moi\projet" (WSL detecte) ou
+       "Identique : <PROJECT_ROOT> (linux)" (execution directe)
+     - Chemin Windows a saisir — C:\… ou \\serveur\… (preciser via "Autre")
+     - Chemin Linux / macOS a saisir — /home/… (preciser via "Autre")
+     - Pas de Chrome sur ce poste — correspondance identique ; les fichiers seront seulement affiches par leur chemin
+     ```
+     Conteneur detecte : pas d'option « Identique » (Chrome ne voit pas le conteneur) — la premiere option devient
+     « Chemin Windows a saisir (Recommande) ». « Pas de Chrome » : `launcher_root` = `project_root`, `launcher_os` = `linux`.
+     Normaliser la reponse : OS deduit de la forme (`X:\…` ou `\\…` → `windows`, `/…` → `linux`), sans separateur final.
+   - Ecriture dans `project-config.json` (section 1, `browser.path_map`).
+3. **Verification** (si Chrome est disponible) : creer `_work/tmp/browser-check.html` (« Correspondance OK »), l'ouvrir
+   avec `browser_url`, lire la page (`get_page_text`) : texte attendu → OK ; sinon afficher l'URL essayee et, en repli
+   (point 2), reposer la question (2 essais, puis enregistrer tel quel avec `⚠ correspondance non verifiee` au message
+   de fin). URL `file://` refusee par l'extension → rappeler l'option « Autoriser l'accès aux URL de fichier » de
+   l'extension Claude in Chrome.
+
 ---
 
 ## Etape 10 : Securite
@@ -1807,7 +1849,10 @@ AskUserQuestion (`multiSelect: true`) : "Quels aspects securite sont importants 
 ## Etape 10b : Elements prives (`PRIVATE/`)
 
 Regle du template (section « Éléments privés » de `CLAUDE.md`) : tout element prive qui ne doit jamais etre
-commite vit dans `PRIVATE/` a la racine, gitignore. Cette etape **etudie** ce qui doit ou peut y aller.
+commite vit dans `PRIVATE/` a la racine, gitignore, partage par les worktrees (jamais copie), range par portee :
+`PRIVATE/GLOBAL/` (commun au projet) et `PRIVATE/<ENV>/` (`<ENV>` = `infrastructure.environments[].name`, ex.
+`PRIVATE/PROD/`). `PRIVATE/gitconfig` reste a la racine (lie a la structure du projet, Etape 9c). Cette etape
+**etudie** ce qui doit ou peut y aller.
 Hors perimetre (conventions propres, jamais deplacees) : `.env`, `.claude/agents/environments/<env>.env` et leurs
 `*.env.example`, `_work/`, `MARKETING/`, `build/`, `TEMPLATE_claude/`, `.claude/`.
 
@@ -1830,9 +1875,9 @@ Puis **anticiper** ce qui y ira d'apres les reponses deja donnees (meme absent a
 
 | Reponse | Element prive attendu |
 |---------|-----------------------|
-| Etape 8b — acces par cle / fichier / token (SSH, kubeconfig, token k8s, compte de service cloud, registre) | fichier d'acces dans `PRIVATE/<type>/` ; la variable de `<env>.env` qui le designe (`KUBECONFIG`, `SSH_KEY_PATH`, `GOOGLE_APPLICATION_CREDENTIALS`...) pointe dans `PRIVATE/` — son **nom** reste dans `<env>.env.example`. Fichier volontairement partage hors repo (`~/.kube/config`) : proposer « Laisser » |
-| Etape 8b — comptes (identifiants de consoles, comptes de service, acces fournisseurs) | `PRIVATE/ACCES.md` (notes d'acces, jamais dans un fichier tracke) |
-| Etape 10 — donnees sensibles / paiements | exports et dumps de donnees reelles (jamais en fixtures de test) |
+| Etape 8b — acces par cle / fichier / token (SSH, kubeconfig, token k8s, compte de service cloud, registre) | fichier d'acces dans `PRIVATE/<ENV>/` (commun a tous les environnements : `PRIVATE/GLOBAL/`) ; la variable de `<env>.env` qui le designe (`KUBECONFIG`, `SSH_KEY_PATH`, `GOOGLE_APPLICATION_CREDENTIALS`...) pointe dans `PRIVATE/` — son **nom** reste dans `<env>.env.example`. Fichier volontairement partage hors repo (`~/.kube/config`) : proposer « Laisser » |
+| Etape 8b — comptes (identifiants de consoles, comptes de service, acces fournisseurs) | `PRIVATE/GLOBAL/ACCES.md` (notes d'acces, jamais dans un fichier tracke ; acces propres a un environnement : `PRIVATE/<ENV>/ACCES.md`) |
+| Etape 10 — donnees sensibles / paiements | exports et dumps de donnees reelles (jamais en fixtures de test) — `PRIVATE/GLOBAL/dumps/`, ou `PRIVATE/<ENV>/dumps/` s'ils viennent d'un environnement |
 | Etape 4 — mobile | keystore Android, profils et certificats de signature iOS |
 | Etape 5 — firmware | cles de provisioning / certificats d'appareil, secrets de flashage |
 | Brief / cadrage — client, contrat | documents client, contrats, specifications sous NDA |
@@ -1868,8 +1913,8 @@ deplacement est fait a la Finalisation (sous-section « Elements prives »), apr
   "private": {
     "reviewed": "2026-11-03",
     "items": [
-      { "path": "PRIVATE/deploy_key", "kind": "cle d'acces PROD", "origin": "moved", "from": "deploy/deploy_key" },
-      { "path": "PRIVATE/dumps/", "kind": "dumps de donnees reelles", "origin": "expected" }
+      { "path": "PRIVATE/PROD/deploy_key", "kind": "cle d'acces PROD", "origin": "moved", "from": "deploy/deploy_key" },
+      { "path": "PRIVATE/GLOBAL/dumps/", "kind": "dumps de donnees reelles", "origin": "expected" }
     ]
   },
   "launcher_env": { "status": "managed", "file": "env-template.yaml", "updated": "2026-11-07" },
@@ -1944,6 +1989,13 @@ deplacement est fait a la Finalisation (sous-section « Elements prives »), apr
   "docs": {
     "mockup_dir": "docs/mockup"
   },
+  "browser": {
+    "path_map": {
+      "project_root": "<PROJECT_ROOT : git rev-parse --show-toplevel>",
+      "launcher_root": "<racine vue par le poste du launcher, ex. C:\\Users\\moi\\projet>",
+      "launcher_os": "<windows | linux>"
+    }
+  },
   "marketing": {
     "site": "auto"
   },
@@ -1985,6 +2037,7 @@ Valeurs a deriver si elles ne sont pas fournies explicitement :
 | `marketing.site` | Defaut `"auto"` : un site marketing est attendu (branche `gh-pages`, uniquement — `MARKETING/` en est le worktree git, jamais un dossier de la branche de code) ; s'il n'existe pas, l'agent marketing declenche une initialisation (questions de cadrage + maquette). `false` = ordre direct de ne pas avoir de site (le CDP dispatche `PREPARE ... — SANS SITE`) |
 | `issues.close_on` | Etape 7. `ci` (defaut ; absent = `ci`) : issue fermee sur CI verte apres QA ; `validation` : issue laissee ouverte en `DONE` jusqu'a une validation utilisateur qui la couvre (GATE LOT explicite, sinon GATE 4) — `commands/context/GITHUB.md` §9.5 |
 | `docs.mockup_dir` | Defaut `docs/mockup` (dossier des maquettes validees — voir `context/COMMON.md` §14) |
+| `browser.path_map` | Etape 9d. **Repli** quand Claude-Launcher ne fournit pas `CL_BROWSER_PATH_MAP` (projet lance sans launcher, ou launcher anterieur) : correspondance de chemins pour ouvrir un fichier du projet dans Chrome en `file://` — `project_root` (racine vue par Claude), `launcher_root` (meme racine vue par le poste qui execute Chrome), `launcher_os` (`windows` \| `linux`). Non pose si la variable est fournie. Absent = meme chemin (WSL : `wslpath -m`). Regle : `context/COMMON.md` 14.9 |
 | `commands.env` | Etape 9b. Prefixe shell evalue par tout agent avant ses commandes `commands.*` (chaine d'outils native de l'OS — `context/COMMON.md` 15.10). Ex. sous WSL : `export PATH=$HOME/.nvm/versions/node/v22.11.0/bin:/usr/local/go/bin:$PATH`. Vide si les outils du PATH sont deja natifs |
 | `commands.test_related` | Boucle DEV : tests lies aux fichiers source modifies, `{FILES}` = liste de fichiers. Stack : `npx vitest related --run {FILES}` / `npx jest --findRelatedTests {FILES}` — vide pour Go/pytest (les dev-* utilisent alors `commands.test_targeted` sur les paquets/dossiers touches) |
 | `commands.test_fast` | **Obsolete** (conserve s'il existe, plus utilise par les dev-*) : il relancait toute la suite hors tag `slow`. Remplace par `commands.test_related` / `commands.test_targeted` |
@@ -1996,7 +2049,7 @@ Valeurs a deriver si elles ne sont pas fournies explicitement :
 | `testing.coverage_min` | Defaut `70` (seuil minimal de couverture, en %) |
 | `milestone.defaults` | Intensite de depart d'un milestone selon son type de version (`patch` / `minor` / `major` → `leger` / `complet`). Defaut `patch: leger`, `minor` et `major: complet`. Le cadrage complet (options, team) est propose par le planner et valide au GATE 2 : `agents/context/MILESTONE_CADRAGE.md`. Absent = `complet` partout |
 | `testing.lot_max_tests` | Defaut `50` (nombre max de cas de test par lot ; QA execute et rapporte lot par lot) |
-| `private` | Etape 10b. `reviewed` : date de l'etude ; `items[]` : contenu attendu de `PRIVATE/` (gitignore) — `path`, `kind` (nature, sans valeur), `origin` : `moved` (deplace depuis `from`) \| `existing` (deja hors git, range) \| `expected` (a fournir par le developpeur). Copie trackee : un clone frais sait ce qui manque ; `qa` y lit ce qu'il copie dans ses worktrees |
+| `private` | Etape 10b. `reviewed` : date de l'etude ; `items[]` : contenu attendu de `PRIVATE/` (gitignore) — `path`, `kind` (nature, sans valeur), `origin` : `moved` (deplace depuis `from`) \| `existing` (deja hors git, range) \| `expected` (a fournir par le developpeur). `path` sous `PRIVATE/GLOBAL/` ou `PRIVATE/<ENV>/`. Copie trackee : un clone frais sait ce qui manque ; `PRIVATE/` est partage (lien symbolique dans les worktrees de `qa`, jamais copie) |
 | `launcher_env` | Etape 9c. `status` : `managed` (environnement conteneur gere par le template) \| `declined` (refuse : plus de question tant qu'aucun fichier n'apparait dans `.claude-launcher/`) ; `file` : `env-template.yaml` (fichier genere par le template, regenere a chaque passage ; absent avec `managed` = convention anterieure, `env.yaml` genere par fusion additive → migration, `templates/launcher/env-yaml.md` §5) ; `updated` : date de la derniere ecriture ; `migrated` : date de la migration de `env.yaml`. Absent = jamais propose (projet anterieur : Etape d1j) |
 | `license` | Etape 1b. `spdx` : identifiant SPDX (`MIT`, `Apache-2.0`...), `LicenseRef-proprietary` (tous droits reserves), `LicenseRef-custom` (texte maison fourni) ou `null` (« Decider plus tard ») ; `holder` / `year` : titulaire et annee du copyright ; `source` : `detected` \| `provided` \| `guided` \| `proprietary` \| `deferred` |
 | `src_dir` | Detection Etape 0 (repertoire source principal) ou stack par defaut : `src`, `cmd`... |
@@ -2466,7 +2519,9 @@ tout deplacement) :
 
 ```bash
 grep -qxF 'PRIVATE/' .gitignore 2>/dev/null || echo 'PRIVATE/' >> .gitignore   # garde-fou .gitignore personnalise
-mkdir -p PRIVATE
+grep -qxF '/PRIVATE' .gitignore 2>/dev/null || echo '/PRIVATE' >> .gitignore   # lien symbolique d'un worktree
+mkdir -p PRIVATE/GLOBAL
+jq -r '.infrastructure.environments[]?.name // empty' .claude/project-config.json | while read -r e; do mkdir -p "PRIVATE/$e"; done
 git check-ignore -q PRIVATE/ || { echo "⚠ PRIVATE/ non ignore — deplacement annule"; exit 1; }
 jq -r '.private.items[]? | select(.origin=="moved") | "\(.from)\t\(.path)"' .claude/project-config.json |
 while IFS=$'\t' read -r from to; do
@@ -2582,6 +2637,10 @@ gh label create "PRET"      --color "bfdadc" --description "Plan validé, dével
 gh label create "EN COURS"  --color "e4e669" --description "Issue en cours de développement" --force
 gh label create "EN REVIEW" --color "d876e3" --description "Issue en cours de revue de code"  --force
 gh label create "EN QA"     --color "f9d0c4" --description "Issue en cours de tests QA"       --force
+gh label edit "A VALIDER" --name "LOT A VALIDER" 2>/dev/null || true   # migration v5.4.0 : label renommé
+gh label create "PLAN A VALIDER" --color "fbca04" --description "Plan rendu, en attente de validation utilisateur (GATE 2)" --force
+gh label create "LOT A VALIDER"  --color "f29513" --description "Lot en QUALIF, en attente de validation utilisateur (GATE LOT)" --force
+gh label create "A PUBLIER"      --color "d4c5f9" --description "Prête pour la PROD, en attente du Oui utilisateur (GATE 4)" --force
 gh label create "DONE"      --color "0e8a16" --description "Issue livrée et validée"           --force
 ```
 
@@ -2835,6 +2894,7 @@ Configuration :
 - Conteneur    : .claude-launcher/env-template.yaml <cree | regenere | inchange | non genere> — local : <chemins> ;
                  env.yaml <non touche | migre (image <x> gardee)> ; necessite Claude-Launcher ≥ v5.5.0 ;
                  <⚠ outil version socle < requis | rien a signaler>   (Etape 9c)
+- Chrome       : <fournie par Claude-Launcher : container ↔ host (os) | repli projet : PROJECT_ROOT ↔ launcher_root (os)> — <verifiee | ⚠ correspondance non verifiee | pas de Chrome>   (Etape 9d)
 
 Memoire projet : .claude/memory/MEMORY.md initialisee (si absente)
 Teamleader : <modele> / <effort> ecrits dans .claude/settings.json (surcharge : compagnon .claude/agents/teamleader.md)
@@ -3154,8 +3214,24 @@ privés » dans `CLAUDE.md` (hors bloc `TEAMLEADER_PROTOCOL`, donc non resynchro
   « Presentation et decision » de l'Etape 10b puis « Elements prives » de la Finalisation.
 - Cle `private` presente → rejouer seulement les recherches 1-2 de l'Etude (trackes) : un nouveau candidat →
   `[!] PRIVATE/ — <fichier> tracke hors PRIVATE/` au rapport d4, decision a l'etape d5 comme ci-dessus.
-- `CLAUDE.md` sans `## Éléments privés` → a l'etape d5, inserer la section depuis `TEMPLATE_claude/CLAUDE_TEMPLATE.md`
-  juste avant `## Conventions Git` (ou en fin de fichier), sans toucher au reste :
+- **Rangement par portee** (projet anterieur a `GLOBAL/` / `<ENV>/`) — elements de `PRIVATE/` hors de cette
+  structure (`gitconfig` excepte) :
+  ```bash
+  ENVS=$(jq -r '[.infrastructure.environments[]?.name] | join("|")' .claude/project-config.json)
+  find PRIVATE -mindepth 1 -maxdepth 1 2>/dev/null | grep -vxE "PRIVATE/(gitconfig|GLOBAL${ENVS:+|$ENVS})"
+  ```
+  Chaque element trouve → `[~] PRIVATE/ — <element> a ranger (GLOBAL/ ou <ENV>/)` au rapport d4, destination
+  proposee d'apres son nom / son `kind` dans `private.items` (ex. `k8s/kubeconfig-prod` → `PROD/kubeconfig`). A
+  l'etape d5 : AskUserQuestion (`multiSelect: true`) « Quels elements ranger ? » (destination en description) ;
+  pour chaque element retenu : `mv`, mise a jour des chemins qui le designent (`.env`, `<env>.env` — fichiers non
+  trackes, edites en place —, et `git grep -nF` dans les fichiers trackes), puis de `private.items[].path`. Rien
+  n'est deplace sans reponse. Dossiers `GLOBAL/` et `<ENV>/` absents : crees (Finalisation, « Elements prives »).
+- `CLAUDE.md` sans `## Éléments privés` → a l'etape d5, inserer la section (et la suivante, `## Outil manquant`)
+  depuis `TEMPLATE_claude/CLAUDE_TEMPLATE.md` juste avant `## Conventions Git` (ou en fin de fichier), sans toucher au
+  reste. Section presente mais anterieure (sans `PRIVATE/GLOBAL` ou sans `## Outil manquant`) → `[~] CLAUDE.md —
+  Éléments privés / Outil manquant a mettre a jour` au rapport d4 ; a l'etape d5, montrer le diff du bloc
+  (`## Éléments privés` → `## Conventions Git`) et le remplacer par celui du template apres accord (supprimer le bloc
+  existant, puis jouer l'insertion ci-dessous) :
 
 ```bash
 grep -q '^## Éléments privés' CLAUDE.md || {
@@ -3203,6 +3279,19 @@ Lecture seule ici : jouer la detection et la composition de l'Etape 9c (`templat
 - A l'etape d5 : la migration (confirmation, reference §5 — « Plus tard » = rien n'est modifie) puis l'ecriture de la
   Finalisation (« Environnement conteneur »), `.gitignore` et `PRIVATE/gitconfig` compris ; la question de l'Etape 9c
   seulement si `launcher_env` est absent.
+
+#### Etape d1k — Correspondance de chemins pour Chrome
+
+Lecture seule ici : jouer l'Etape 9d sans question.
+- `launcher_browser_map` repond → `[=] ouverture Chrome — fournie par Claude-Launcher : <container> ↔ <host> (<os>)`
+  (`[]` → `aucun navigateur declare par le launcher`) ; un `browser.path_map` present est garde comme repli.
+- Variable absente, `browser.path_map` absent → `[+] browser.path_map — a definir (launcher sans CL_BROWSER_PATH_MAP :
+  repli projet ; mettre a jour Claude-Launcher le fournirait)`.
+- Variable absente, `project_root` different de `git rev-parse --show-toplevel` (projet deplace) →
+  `[~] browser.path_map — project_root <ancien> → <actuel>`.
+- Sinon → `[=] browser.path_map — <launcher_root> (<launcher_os>), repli projet`.
+- A l'etape d5 : verification de l'Etape 9d (point 3) dans tous les cas ; pour `[+]`/`[~]`, question du point 2 et
+  ecriture de `browser.path_map` seul (migration additive, le reste du fichier inchange).
 
 #### Etape d2 — Calculer les noms deployes attendus
 
@@ -3348,6 +3437,9 @@ Synchronisation depuis github.com/<repo>
 
   Environnement conteneur (etape d1j) :
   [~] .claude-launcher/env-template.yaml — local web/node_modules, watch web/package-lock.json
+
+  Ouverture dans Chrome (etape d1k) :
+  [=] ouverture Chrome — fournie par Claude-Launcher : /share/MFS/ROOT ↔ \\nas\MFS\ROOT (windows)
 
   Graphe des fichiers de définition locaux (etape d1e, etat avant mise a jour) :
   [⛓] CLAUDE.md:42 → .claude/agents/old.md          ← lien casse (cible absente)
@@ -3766,6 +3858,10 @@ gh label create "PRET"      --color "bfdadc" --description "Plan validé, dével
 gh label create "EN COURS"  --color "e4e669" --description "Issue en cours de développement" --force
 gh label create "EN REVIEW" --color "d876e3" --description "Issue en cours de revue de code"  --force
 gh label create "EN QA"     --color "f9d0c4" --description "Issue en cours de tests QA"       --force
+gh label edit "A VALIDER" --name "LOT A VALIDER" 2>/dev/null || true   # migration v5.4.0 : label renommé
+gh label create "PLAN A VALIDER" --color "fbca04" --description "Plan rendu, en attente de validation utilisateur (GATE 2)" --force
+gh label create "LOT A VALIDER"  --color "f29513" --description "Lot en QUALIF, en attente de validation utilisateur (GATE LOT)" --force
+gh label create "A PUBLIER"      --color "d4c5f9" --description "Prête pour la PROD, en attente du Oui utilisateur (GATE 4)" --force
 gh label create "DONE"      --color "0e8a16" --description "Issue livrée et validée"           --force
 ```
 
@@ -3796,7 +3892,7 @@ Synchronisation terminee.
   CLAUDE.md bloc TEAMLEADER_PROTOCOL : mis à jour
   Modeles/efforts agents            : <defauts adaptes | N alertes — N surcharges appliquees> (etape d6a)
   CLAUDE.md table Agents Disponibles : mis à jour (N lignes — documentation uniquement)
-  Labels GitHub                     : vérifiés (PLANNING, PRET, EN COURS, EN REVIEW, EN QA, DONE)
+  Labels GitHub                     : vérifiés (PLANNING, PLAN A VALIDER, PRET, EN COURS, EN REVIEW, EN QA, LOT A VALIDER, A PUBLIER, DONE)
   Audit contexte (/context-audit)   : N corriges (Auto), N arbitres, N laisses (etape d7b)
   Publication                       : <PUBLISH> (section 7 — ex. "pousse sur origin/main")
   Schema infrastructure             : [convertit vers environments[] | deja a jour | inchange (refuse)]
@@ -3805,6 +3901,7 @@ Synchronisation terminee.
   Elements prives (PRIVATE/)        : [N deplaces, N attendus | inchange] — rotation recommandee : <elements> (etape d1h)
   Toolchain / tests cibles          : [native | Linux activee (commands.env) | ⚠ Windows conservee] ; test_related [ajoute | inchange] (etape d1i)
   Environnement conteneur           : [.claude-launcher/env-template.yaml cree | regenere | inchange | non gere] ; env.yaml [non touche | migre | migration reportee] (etape d1j)
+  Ouverture dans Chrome             : [fournie par Claude-Launcher | repli projet defini | mis a jour | inchange] — [verifiee | ⚠ non verifiee] (etape d1k)
 
   Fichiers PROJET preserves (non touches) :
     ✓ CLAUDE.md (hors bloc TEAMLEADER_PROTOCOL et hors table Agents Disponibles)

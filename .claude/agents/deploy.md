@@ -53,7 +53,7 @@ Notification : `Candidat : build/candidate_v$DIR_VERSION/EmbyBadges-$VERSION.dll
 
 ## Variables d'environnement
 
-Les acces cluster sont dans `PRIVATE/kubeconfig.yml` (gitignore, hors `.claude/`). Les fichiers
+Les acces cluster sont dans `PRIVATE/GLOBAL/kubeconfig.yml` (gitignore, hors `.claude/`). Les fichiers
 `environments/<env>.env` ne portent donc que `KUBE_CONTEXT`/`KUBECONFIG` — voir chaque `deploy.<env>.md`.
 
 ## Regle absolue
